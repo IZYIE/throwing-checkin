@@ -80,6 +80,7 @@ label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
 .mc-status.ok { color: #1fa755; }
 .mc-status.warn { color: #ff7a1a; }
 .mc-status.none { color: #8a94a6; }
+.mc-status.free { color: #1677ff; font-weight: 600; }
 .mc-action { font-size: 14px; flex-shrink: 0; }
 .mc-action.go { color: #1e6fff; font-weight: 600; }
 .mc-action.bind { color: #ff7a1a; }
@@ -122,6 +123,12 @@ label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
 .chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { padding: 5px 13px; border-radius: 20px; font-size: 13px; }
 .chip-ok { background: #e6f7ec; color: #1fa755; }
+.free-day-chip { display: inline-flex; align-items: center; gap: 6px; background: #e6f4ff; color: #1677ff; border-radius: 16px; padding: 4px 10px; font-size: 13px; margin: 0 6px 6px 0; }
+.free-day-chip a { color: #ff4d4f; text-decoration: none; font-weight: 600; }
+.free-day-banner { background: linear-gradient(90deg, #e6f4ff, #d6eaff); color: #0958d9; border: 1px solid #91caff; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+.free-day-tip { margin-top: 10px; padding: 10px 12px; background: #e6f4ff; color: #0958d9; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.free-day-hint { margin-top: 10px; padding: 8px 12px; background: #f5f7fa; color: #666; border-radius: 8px; font-size: 12px; }
+.free-day-hint span { color: #1677ff; font-weight: 600; }
 .chip-none { background: #f0f2f5; color: #8a94a6; }
 .rank-item { display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid #f2f4f8; }
 .rank-item.warn { background: #fff2f0; margin: 0 -10px; padding: 11px 10px; border-radius: 6px; }
@@ -293,6 +300,7 @@ let members = [];
 let checkins = [];
 let meId = localStorage.getItem(KEY_ME) || null;
 let deviceId = localStorage.getItem(KEY_DEVICE) || (localStorage.setItem(KEY_DEVICE, uid()), localStorage.getItem(KEY_DEVICE));
+let freeDaysCache = []; // 免打卡日列表（YYYY-MM-DD 数组）
 
 /* 从 Supabase 加载全部数据到内存 */
 async function loadFromDB() {
@@ -300,6 +308,8 @@ async function loadFromDB() {
   members = mList || [];
   const { data: cList } = await sb.from('checkins').select('*').order('createdAt');
   checkins = (cList || []).map((c) => ({ ...c, dbId: c.id }));
+  // 加载免打卡日
+  await loadFreeDays();
   // 验证 meId 是否还有效
   if (meId && !members.find((m) => m.id === meId)) {
     meId = null;
@@ -307,6 +317,59 @@ async function loadFromDB() {
   }
   // 检查并扣除未打卡生命值
   await checkAndDeductHp();
+}
+
+/* 加载免打卡日：优先云端 config 表，云端不可用时回退本地缓存 */
+async function loadFreeDays() {
+  freeDaysCache = [];
+  // 本地兜底（防止云端表缺失时刷新即丢）
+  try {
+    const local = localStorage.getItem('tc_freeDays');
+    if (local) freeDaysCache = String(local).split(',').filter(Boolean);
+  } catch (e) {}
+  try {
+    const { data, error } = await sb.from('config').select('*').eq('key', 'freeDays').maybeSingle();
+    if (error) {
+      console.warn('config 表不可用（免打卡日仅保存在本机）：', error.message);
+      return;
+    }
+    if (data && data.value) {
+      freeDaysCache = String(data.value).split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn('config 表不可用（免打卡日仅保存在本机）：', e.message);
+  }
+}
+
+function getFreeDays() {
+  return freeDaysCache || [];
+}
+
+function isFreeDay(dateStr) {
+  return getFreeDays().includes(dateStr);
+}
+
+/* 保存免打卡日列表：写入云端 config 表 + 本地缓存；云端失败时仅本机有效并提示 */
+async function saveFreeDays(list) {
+  freeDaysCache = list.slice();
+  // 始终写本地缓存
+  try { localStorage.setItem('tc_freeDays', list.join(',')); } catch (e) {}
+  // 写云端
+  try {
+    const { data: exist, error: qErr } = await sb.from('config').select('*').eq('key', 'freeDays').maybeSingle();
+    if (qErr) throw qErr;
+    if (exist) {
+      const { error } = await sb.from('config').update({ value: list.join(',') }).eq('key', 'freeDays');
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('config').insert({ key: 'freeDays', value: list.join(',') });
+      if (error) throw error;
+    }
+    return { code: 0, msg: '已保存到云端' };
+  } catch (e) {
+    console.error('保存免打卡日到云端失败：', e);
+    return { code: 500, msg: '云端保存失败：数据库缺少 config 表。请在 Supabase SQL Editor 执行建表语句，详见说明。' };
+  }
 }
 
 /* 生命值实时计算，不需要扣血操作 */
@@ -323,7 +386,7 @@ function formatDate(d) {
   return y + '-' + m + '-' + day;
 }
 
-/* 计算累计未打卡次数：从最早记录日期到昨天，总天数 - 有打卡记录的天数（不管来不来） */
+/* 计算累计未打卡次数：从最早记录日期到昨天，总天数(排除免打卡日) - 有打卡记录的天数（不管来不来） */
 function getMissStreak(memberId) {
   if (checkins.length === 0) return 0;
   // 找最早的打卡日期
@@ -335,12 +398,20 @@ function getMissStreak(memberId) {
   yesterday.setDate(yesterday.getDate() - 1);
   const totalDays = Math.floor((yesterday - start) / (1000 * 60 * 60 * 24)) + 1;
   if (totalDays <= 0) return 0;
+  // 统计区间内免打卡日的数量（这些天不算未打卡）
+  const freeDays = getFreeDays();
+  let freeInRange = 0;
+  for (let d = new Date(start); d <= yesterday; d.setDate(d.getDate() + 1)) {
+    const ds = formatDate(d);
+    if (freeDays.includes(ds)) freeInRange++;
+  }
+  const effectiveDays = Math.max(0, totalDays - freeInRange);
   // 该成员有打卡记录的天数（不管 present 还是 absent）
   const hasRecordDays = new Set(
     checkins.filter((c) => c.memberId === memberId).map((c) => c.date)
   ).size;
-  // 未打卡天数 = 总天数 - 有记录的天数
-  return Math.max(0, totalDays - hasRecordDays);
+  // 未打卡天数 = 有效总天数 - 有记录的天数
+  return Math.max(0, effectiveDays - hasRecordDays);
 }
 
 /* 实时计算生命值：100 - 累计未打卡天数 × 10 */
@@ -540,6 +611,7 @@ function apiGetMyStats(date) {
 
 function apiGetGroupStats(today) {
   const d = today && isValidDate(today) ? today : beijingDate();
+  const isFree = isFreeDay(d);
   const range = weekRange(d);
   const todayRecords = checkins.filter((c) => c.date === d);
   const map = {};
@@ -548,8 +620,11 @@ function apiGetGroupStats(today) {
   const presentList = [], absentList = [], notCheckedInList = [];
   const roster = members.map((m) => {
     const rec = map[m.id];
-    const status = rec ? rec.status : 'none';
-    if (rec && rec.status === 'present') presentList.push({ id: m.id, name: m.name });
+    // 免打卡日：所有成员状态显示为 free（免打卡）
+    const status = isFree ? 'free' : (rec ? rec.status : 'none');
+    if (isFree) {
+      // 免打卡日不产生未打卡名单
+    } else if (rec && rec.status === 'present') presentList.push({ id: m.id, name: m.name });
     else if (rec && rec.status === 'absent') absentList.push({ id: m.id, name: m.name, reason: rec.reason || '' });
     else if (m.active) notCheckedInList.push({ id: m.id, name: m.name });
     return { id: m.id, name: m.name, role: m.role, active: m.active, boundBy: m.boundBy || '', status };
@@ -565,7 +640,7 @@ function apiGetGroupStats(today) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
 
-  return { code: 0, today: d, members: roster, presentList, absentList, notCheckedInList, weekRank };
+  return { code: 0, today: d, isFree, members: roster, presentList, absentList, notCheckedInList, weekRank };
 }
 
 /* ---- 管理员 ---- */
@@ -727,7 +802,8 @@ function apiExportData(namesOnly) {
 }
 
 // 导入：按姓名合并成员与打卡记录，重复数据自动跳过；普通成员也可用（接收名单）
-function apiImportData(data) {
+// 导入的数据会同步写入云端数据库，所有设备可见
+async function apiImportData(data) {
   if (!data || data.version !== 1 || !Array.isArray(data.members)) {
     return { code: 400, msg: '数据格式不正确，请选择由本应用导出的 JSON 文件' };
   }
@@ -737,10 +813,10 @@ function apiImportData(data) {
 
   let addedMembers = 0, skippedMembers = 0, addedCheckins = 0, skippedCheckins = 0;
 
-  data.members.forEach((im) => {
+  for (const im of data.members) {
     const name = (im.name || '').trim();
-    if (!name) return;
-    if (nameMap[name]) { skippedMembers++; return; } // 同名已存在，保留本地
+    if (!name) continue;
+    if (nameMap[name]) { skippedMembers++; continue; } // 同名已存在，保留本地
     const doc = {
       id: uid(),
       name,
@@ -750,17 +826,21 @@ function apiImportData(data) {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+    // 写入云端，拿到真实 id
+    const inserted = await insertMember(doc);
+    if (!inserted) continue;
+    doc.id = inserted.id;
     members.push(doc);
     nameMap[name] = doc.id;
     addedMembers++;
-  });
+  }
 
-  (data.checkins || []).forEach((ic) => {
+  for (const ic of data.checkins || []) {
     const name = (ic.memberName || '').trim();
     const localId = nameMap[name];
-    if (!localId || !isValidDate(ic.date)) return;
+    if (!localId || !isValidDate(ic.date)) continue;
     const key = localId + '_' + ic.date;
-    if (checkinKeys.has(key)) { skippedCheckins++; return; }
+    if (checkinKeys.has(key)) { skippedCheckins++; continue; }
     const doc = {
       id: uid(),
       memberId: localId,
@@ -775,11 +855,12 @@ function apiImportData(data) {
       updatedAt: ic.updatedAt || Date.now()
     };
     checkins.push(doc);
+    // 写入云端
+    await syncCheckin(doc);
     checkinKeys.add(key);
     addedCheckins++;
-  });
+  }
 
-  persist();
   return {
     code: 0,
     msg: '导入完成：新增成员 ' + addedMembers + ' 个（跳过同名 ' + skippedMembers + '），新增记录 ' + addedCheckins + ' 条（跳过重复 ' + skippedCheckins + '）'
@@ -904,6 +985,9 @@ function renderCheckin() {
   const kw = state.search.trim();
 
   let html = '' +
+    (isFreeDay(beijingDate())
+      ? '<div class="free-day-banner">🎉 今天是免打卡日（' + beijingDate() + '），所有人无需打卡，不扣生命值</div>'
+      : '') +
     '<div class="search-bar">' +
       '<input placeholder="搜索成员姓名" value="' + esc(state.search) + '" oninput="onSearch(this.value)">' +
       (state.search ? '<span class="search-clear" onclick="clearSearch()">✕</span>' : '') +
@@ -919,8 +1003,8 @@ function renderMemberList(all) {
   const list = all.filter((m) => !kw || m.name.indexOf(kw) > -1);
   let html = '';
   list.forEach((m) => {
-    const stText = m.status === 'present' ? '已来训练' : m.status === 'absent' ? '已请假' : '未打卡';
-    const stCls = m.status === 'present' ? 'ok' : m.status === 'absent' ? 'warn' : 'none';
+    const stText = m.status === 'present' ? '已来训练' : m.status === 'absent' ? '已请假' : m.status === 'free' ? '免打卡日' : '未打卡';
+    const stCls = m.status === 'present' ? 'ok' : m.status === 'absent' ? 'warn' : m.status === 'free' ? 'free' : 'none';
     const hp = getHp(m.id);
     const hpCls = hp < 60 ? 'hp-low' : '';
     let action = '';
@@ -1011,6 +1095,16 @@ function renderMember() {
     canModify = isToday && (isAdm || (record.modifyCount || 0) < 1);
   }
 
+  const freeDays = getFreeDays();
+  const isFree = isFreeDay(state.date);
+  let freeTip = '';
+  if (isFree) {
+    freeTip = '<div class="free-day-tip">🎉 这一天是免打卡日，不需要补签</div>';
+  } else if (freeDays.length) {
+    const upcoming = freeDays.slice().sort().join('、');
+    freeTip = '<div class="free-day-hint">已设置免打卡日：<span>' + esc(upcoming) + '</span></div>';
+  }
+
   let html =
     '<div class="back-bar" onclick="goView(\'checkin\')">‹ 返回成员列表</div>' +
     '<div class="card">' +
@@ -1019,6 +1113,7 @@ function renderMember() {
         '<input type="date" value="' + state.date + '" min="2020-01-01" max="' + today() + '" onchange="onDatePick(this.value)">' +
         '<span class="date-hint">' + (isToday ? '今天' : '补打卡') + '</span>' +
       '</div>' +
+      freeTip +
       '<div class="member-line">成员：' + esc(m.name) + (canOperate ? '' : '（仅查看）') + '</div>' +
     '</div>';
 
@@ -1035,16 +1130,24 @@ function renderMember() {
         (canModify ? '<button class="btn btn-ghost btn-block" onclick="startEdit()">修改记录</button>' : '') +
       '</div>';
   } else if (!record || state.editing) {
+    let btnHtml;
+    if (isFree) {
+      btnHtml = '<div class="tip">这一天是免打卡日，无需任何操作。</div>';
+    } else if (!canOperate) {
+      btnHtml = '<div class="tip">你只能给自己打卡，请点击自己的姓名进入打卡页。</div>';
+    } else {
+      const btn1 = isToday ? '今天来训练' : '标记为来训练';
+      const btn2 = state.showReason ? '确认请假' : (isToday ? '今天不来训练' : '标记为请假');
+      btnHtml = '<div class="btn-row">' +
+        '<button class="btn btn-primary" onclick="submitPresent()">' + btn1 + '</button>' +
+        '<button class="btn btn-warn" onclick="submitAbsent()">' + btn2 + '</button>' +
+      '</div>';
+    }
     html +=
       '<div class="card">' +
         '<div class="form-title">' + (state.editing ? '修改打卡' : (record ? '该日期暂无记录' : (isToday ? '今日打卡' : '补打卡'))) + '</div>' +
-        (canOperate
-          ? '<div class="btn-row">' +
-              '<button class="btn btn-primary" onclick="submitPresent()">今天来训练</button>' +
-              '<button class="btn btn-warn" onclick="submitAbsent()">' + (state.showReason ? '确认请假' : '今天不来训练') + '</button>' +
-            '</div>'
-          : '<div class="tip">你只能给自己打卡，请点击自己的姓名进入打卡页。</div>') +
-        (state.showReason ? renderReasonBox() : '') +
+        btnHtml +
+        (state.showReason && !isFree ? renderReasonBox() : '') +
         (state.editing ? '<button class="btn btn-ghost btn-block" onclick="cancelEdit()">取消修改</button>' : '') +
       '</div>';
   }
@@ -1149,10 +1252,14 @@ function renderStats() {
       (x.reason ? '<div class="record-reason">' + esc(x.reason) + '</div>' : '') +
     '</div>';
   });
-  html += '<div class="section-title">今日未打卡（' + g.notCheckedInList.length + '）</div>' +
-    '<div class="card chip-wrap">' +
-      (g.notCheckedInList.length ? g.notCheckedInList.map((x) => '<span class="chip chip-none">' + esc(x.name) + '</span>').join('') : '<div class="empty">全部已打卡</div>') +
-    '</div>';
+  if (g.isFree) {
+    html += '<div class="card free-day-banner">🎉 今天是免打卡日（' + g.today + '），所有人无需打卡，不扣生命值，不计入未打卡</div>';
+  } else {
+    html += '<div class="section-title">今日未打卡（' + g.notCheckedInList.length + '）</div>' +
+      '<div class="card chip-wrap">' +
+        (g.notCheckedInList.length ? g.notCheckedInList.map((x) => '<span class="chip chip-none">' + esc(x.name) + '</span>').join('') : '<div class="empty">全部已打卡</div>') +
+      '</div>';
+  }
 
   // 累计出勤排行榜（总训练次数）
   const totalRank = members
@@ -1504,6 +1611,11 @@ function doExport() {
 }
 
 function renderAdminSettings() {
+  const freeDays = getFreeDays();
+  const freeDaysHtml = freeDays.length
+    ? freeDays.slice().sort().map((d) =>
+        '<span class="free-day-chip">' + d + ' <a href="javascript:void(0)" onclick="removeFreeDay(\'' + d + '\')">✕</a></span>').join('')
+    : '<div class="empty">暂无免打卡日</div>';
   return '<div class="card">' +
     '<div class="form-title">数据备份</div>' +
     '<div class="toolbar">' +
@@ -1513,6 +1625,24 @@ function renderAdminSettings() {
     '<div class="tip" style="margin-top:10px">' +
       '数据实时同步在云端，所有成员打开链接即可看到最新状态。导出备份仅用于数据备份。导出汇总表可直接用 Excel 打开。' +
     '</div>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="form-title">免打卡日设置</div>' +
+    '<div class="tip" style="margin:4px 0 10px">' +
+      '免打卡日当天所有成员不需要打卡，不扣生命值，也不算未打卡。支持单个日期或连续多天。' +
+    '</div>' +
+    '<div class="toolbar">' +
+      '<input type="date" id="freeDayInput" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+      '<button class="btn btn-primary" onclick="addFreeDay()">添加</button>' +
+    '</div>' +
+    '<div class="toolbar" style="margin-top:8px">' +
+      '<input type="text" id="freeDayRangeInput" placeholder="批量添加，如 2026-10-01,2026-10-02,2026-10-03" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+      '<button class="btn btn-ghost" onclick="addFreeDayRange()">批量添加</button>' +
+    '</div>' +
+    '<div class="free-day-wrap" style="margin-top:10px">' + freeDaysHtml + '</div>' +
+    (isFreeDay(beijingDate())
+      ? '<div class="tip" style="margin-top:8px;color:#1fa755;font-weight:600">✅ 今天是免打卡日，所有人无需打卡</div>'
+      : '') +
   '</div>' +
   '<div class="card">' +
     '<div class="form-title">数据重置</div>' +
@@ -1526,6 +1656,46 @@ function renderAdminSettings() {
   '<div class="card tip">' +
     '本系统使用云端数据库，所有成员共享同一份数据，打卡实时同步。' +
   '</div>';
+}
+
+/* 添加单个免打卡日 */
+async function addFreeDay() {
+  const input = document.getElementById('freeDayInput');
+  const d = input.value;
+  if (!d) { toast('请选择日期'); return; }
+  if (isFreeDay(d)) { toast('该日期已是免打卡日'); return; }
+  const list = getFreeDays();
+  list.push(d);
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已添加免打卡日 ' + d, 'success');
+  render();
+}
+
+/* 批量添加免打卡日 */
+async function addFreeDayRange() {
+  const input = document.getElementById('freeDayRangeInput');
+  const raw = input.value.trim();
+  if (!raw) { toast('请输入日期列表'); return; }
+  const parts = raw.split(/[,，\s]+/).map((s) => s.trim()).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s));
+  if (!parts.length) { toast('格式不正确，请用 2026-10-01,2026-10-02 格式'); return; }
+  const list = getFreeDays();
+  let added = 0;
+  parts.forEach((d) => { if (!list.includes(d)) { list.push(d); added++; } });
+  if (!added) { toast('这些日期都已是免打卡日'); return; }
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已添加 ' + added + ' 天免打卡日', 'success');
+  render();
+}
+
+/* 删除免打卡日 */
+async function removeFreeDay(d) {
+  const list = getFreeDays().filter((x) => x !== d);
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已移除免打卡日 ' + d);
+  render();
 }
 
 /* 导出成员统计汇总 CSV */
@@ -1566,7 +1736,6 @@ function resetAllData() {
       }
       checkins.length = 0;
       // 清空后生命值自动恢复100（实时计算）
-      localStorage.removeItem(KEY_CHECKINS);
       toast('已重置', 'success');
       render();
     }
@@ -1609,10 +1778,10 @@ function pickImportFile() {
       const file = importInput.files && importInput.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
           const data = JSON.parse(reader.result);
-          const r = apiImportData(data);
+          const r = await apiImportData(data);
           toast(r.msg, r.code === 0 ? 'success' : undefined);
           if (r.code === 0) render();
         } catch (e) {
