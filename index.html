@@ -197,7 +197,7 @@ label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
 #modalBtns { display: flex; gap: 10px; margin-top: 18px; }
 #modalBtns .btn { flex: 1; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'"></script>
 </head>
 <body>
 <div id="app">
@@ -238,10 +238,17 @@ label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
  * ============================================================ */
 
 /* Supabase 客户端 */
-const sb = supabase.createClient(
-  'https://sdfvlxcetdihdsixovkf.supabase.co',
-  'sb_publishable_W2pYh6KFSMu1q-CQn-BGdQ_42TTCTQh'
-);
+let sb = null;
+try {
+  if (typeof supabase === 'undefined') throw new Error('supabase 库未加载');
+  sb = supabase.createClient(
+    'https://sdfvlxcetdihdsixovkf.supabase.co',
+    'sb_publishable_W2pYh6KFSMu1q-CQn-BGdQ_42TTCTQh'
+  );
+} catch (e) {
+  document.body.innerHTML = '<div style="padding:60px 20px;text-align:center;color:#666;font-size:15px;line-height:1.8"><div style="font-size:48px;margin-bottom:16px">⚠️</div>云数据库组件加载失败<br><br>请点击右上角「···」<br>选择「在浏览器打开」即可正常使用</div>';
+  throw e;
+}
 
 /* ---------- 工具 ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -708,6 +715,22 @@ async function apiAdminMembers(action, payload) {
     m.updatedAt = Date.now();
     syncMember(m);
     return { code: 0, msg: '已解绑' };
+  }
+
+  if (action === 'delete') {
+    const m = members.find((x) => x.id === payload.id);
+    if (!m) return { code: 404, msg: '成员不存在' };
+    if (m.id === me.id) return { code: 400, msg: '不能删除自己' };
+    // 删除该成员的所有打卡记录
+    const mine = checkins.filter((c) => c.memberId === m.id);
+    if (mine.length) {
+      await sb.from('checkins').delete().in('id', mine.map((c) => c.id));
+      checkins = checkins.filter((c) => c.memberId !== m.id);
+    }
+    // 删除成员
+    await sb.from('members').delete().eq('id', m.id);
+    members = members.filter((x) => x.id !== m.id);
+    return { code: 0, msg: '已删除' + m.name + ' 及其 ' + mine.length + ' 条打卡记录' };
   }
 
   return { code: 400, msg: '未知操作' };
@@ -1444,6 +1467,7 @@ function renderAdminMembers() {
           '<button class="op-btn" onclick="openMemberForm(\'' + m.id + '\')">编辑</button>' +
           (!isSelf ? '<button class="op-btn ' + (m.active ? 'danger' : '') + '" onclick="toggleMember(\'' + m.id + '\')">' + (m.active ? '停用' : '启用') + '</button>' : '') +
           (boundCount > 0 && !isSelf ? '<button class="op-btn red" onclick="unbindMember(\'' + m.id + '\')">解绑</button>' : '') +
+          (!isSelf ? '<button class="op-btn red" onclick="deleteMember(\'' + m.id + '\')">删除</button>' : '') +
         '</div>' +
       '</div>';
   });
@@ -1505,6 +1529,24 @@ function unbindMember(id) {
     onConfirm: async () => {
       const r = await apiAdminMembers('unbind', { id });
       toast(r.msg || '已解绑');
+      render();
+    }
+  });
+}
+
+function deleteMember(id) {
+  const m = members.find((x) => x.id === id);
+  if (!m) return;
+  const cnt = checkins.filter((c) => c.memberId === id).length;
+  showModal({
+    title: '删除成员',
+    body: '确定删除「' + esc(m.name) + '」吗？<br><br>⚠️ 此操作不可恢复，将同时删除该成员的 <b>' + cnt + '</b> 条打卡记录。',
+    confirmText: '确认删除',
+    danger: true,
+    onConfirm: async () => {
+      const r = await apiAdminMembers('delete', { id });
+      if (r.code !== 0) { toast(r.msg); return; }
+      toast(r.msg, 'success');
       render();
     }
   });
