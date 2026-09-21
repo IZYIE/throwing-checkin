@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>投掷组训练打卡 · 网页版</title>
+<style>
+/* ========== 基础 ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f2f4f8; color: #1f2d3d; font-size: 15px;
+}
+#app { max-width: 520px; margin: 0 auto; min-height: 100vh; position: relative; padding-bottom: 64px; }
+.page { padding: 14px 14px 30px; }
+
+/* ========== 头部 ========== */
+.header {
+  padding: 10px 2px 14px;
+}
+.header-title { font-size: 22px; font-weight: 700; }
+.header-sub { margin-top: 4px; font-size: 12px; color: #8a94a6; }
+.header-identity {
+  margin-top: 10px; display: inline-flex; align-items: center; gap: 6px;
+  background: #e8f0ff; color: #1e6fff; font-size: 12px; border-radius: 20px; padding: 4px 12px;
+}
+.header-identity.unbound { background: #f0f2f5; color: #8a94a6; }
+
+/* ========== 卡片 / 通用 ========== */
+.card {
+  background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(31,45,61,.06);
+}
+.section-title { font-size: 16px; font-weight: 600; margin: 16px 4px 10px; }
+.empty { text-align: center; color: #8a94a6; padding: 28px 0; font-size: 13px; }
+.tip { color: #8a94a6; font-size: 12px; line-height: 1.7; }
+.btn {
+  display: inline-block; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+  padding: 11px 18px; cursor: pointer; text-align: center; line-height: 1.4;
+}
+.btn:active { opacity: .85; }
+.btn-primary { background: #1e6fff; color: #fff; width: 100%; }
+.btn-warn { background: #ff7a1a; color: #fff; }
+.btn-ghost { background: #fff; color: #1e6fff; border: 1.5px solid #1e6fff; }
+.btn-danger { background: #fff; color: #e64340; border: 1.5px solid #e64340; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 12px; }
+.badge.ok { background: #e6f7ec; color: #1fa755; }
+.badge.warn { background: #fff1e6; color: #ff7a1a; }
+.badge.none { background: #f0f2f5; color: #8a94a6; }
+.tag { font-size: 11px; padding: 0 7px; border-radius: 6px; margin-left: 6px; vertical-align: 2px; }
+.tag-admin { background: #e8f0ff; color: #1e6fff; }
+.tag-off { background: #f0f2f5; color: #8a94a6; }
+input, select, textarea {
+  width: 100%; border: 1.5px solid #e2e7ee; border-radius: 10px; padding: 10px 12px;
+  font-size: 15px; font-family: inherit; background: #fff; color: #1f2d3d; outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: #1e6fff; }
+textarea { min-height: 90px; resize: vertical; }
+label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
+
+/* ========== 搜索 ========== */
+.search-bar { display: flex; align-items: center; background: #fff; border-radius: 10px; padding: 0 12px; margin-bottom: 12px; border: 1.5px solid transparent; }
+.search-bar input { border: none; padding: 11px 0; }
+.search-clear { color: #8a94a6; padding: 4px 0 4px 12px; cursor: pointer; font-size: 16px; }
+
+/* ========== 成员卡片 ========== */
+.member-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: 12px; padding: 15px 16px; margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(31,45,61,.06); cursor: pointer;
+}
+.member-card.off { opacity: .55; }
+.member-card.hp-low { border: 2px solid #ff4d4f; background: #fff2f0; }
+.mc-name { font-size: 16px; font-weight: 600; }
+.mc-status { margin-top: 6px; font-size: 13px; }
+.mc-status.ok { color: #1fa755; }
+.mc-status.warn { color: #ff7a1a; }
+.mc-status.none { color: #8a94a6; }
+.mc-status.free { color: #1677ff; font-weight: 600; }
+.mc-action { font-size: 14px; flex-shrink: 0; }
+.mc-action.go { color: #1e6fff; font-weight: 600; }
+.mc-action.bind { color: #ff7a1a; }
+.hp-bar { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; }
+.hp-label { color: #ff4d4f; font-weight: 600; }
+.hp-progress { flex: 1; height: 8px; background: #f0f2f5; border-radius: 4px; overflow: hidden; }
+.hp-fill { height: 100%; background: linear-gradient(90deg, #52c41a, #a0d911); border-radius: 4px; transition: width .3s; }
+.hp-low .hp-fill { background: linear-gradient(90deg, #ff4d4f, #ff7875); }
+.hp-num { color: #666; min-width: 24px; text-align: right; }
+
+/* ========== 打卡页 ========== */
+.back-bar { display: inline-flex; align-items: center; color: #1e6fff; font-size: 14px; cursor: pointer; margin-bottom: 10px; }
+.date-picker { display: flex; align-items: center; justify-content: space-between; font-size: 20px; font-weight: 700; color: #1e6fff; }
+.date-picker.past { color: #ff7a1a; }
+.date-hint { font-size: 12px; font-weight: 400; color: #8a94a6; }
+.member-line { margin-top: 10px; font-size: 14px; }
+.record-status { font-size: 20px; font-weight: 700; }
+.record-status.ok { color: #1fa755; }
+.record-status.warn { color: #ff7a1a; }
+.record-reason { margin-top: 8px; background: #f7f8fa; border-radius: 8px; padding: 10px 12px; line-height: 1.6; }
+.record-time { margin-top: 8px; font-size: 12px; color: #8a94a6; }
+.record-note { margin-top: 6px; font-size: 12px; color: #ff7a1a; }
+.form-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.reason-wrap { position: relative; margin-top: 12px; }
+.reason-count { text-align: right; font-size: 12px; color: #8a94a6; margin-top: 4px; }
+.btn-block { width: 100%; margin-top: 12px; }
+
+/* ========== 统计 ========== */
+.tabs { display: flex; background: #fff; border-radius: 10px; padding: 4px; margin-bottom: 14px; }
+.tab { flex: 1; text-align: center; padding: 9px 0; font-size: 15px; color: #8a94a6; border-radius: 8px; cursor: pointer; }
+.tab.active { background: #1e6fff; color: #fff; font-weight: 600; }
+.stat-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.stat-card { flex: 1 1 calc(50% - 5px); background: #fff; border-radius: 12px; padding: 18px 10px; text-align: center; box-shadow: 0 2px 8px rgba(31,45,61,.06); }
+.stat-num { font-size: 30px; font-weight: 700; color: #1e6fff; }
+.stat-label { margin-top: 4px; font-size: 13px; color: #8a94a6; }
+.record-row { display: flex; align-items: center; justify-content: space-between; }
+.record-date { font-size: 15px; font-weight: 600; }
+.record-item { padding: 12px 14px; }
+.record-item + .record-item { margin-top: 10px; }
+.chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 5px 13px; border-radius: 20px; font-size: 13px; }
+.chip-ok { background: #e6f7ec; color: #1fa755; }
+.free-day-chip { display: inline-flex; align-items: center; gap: 6px; background: #e6f4ff; color: #1677ff; border-radius: 16px; padding: 4px 10px; font-size: 13px; margin: 0 6px 6px 0; }
+.free-day-chip a { color: #ff4d4f; text-decoration: none; font-weight: 600; }
+.free-day-banner { background: linear-gradient(90deg, #e6f4ff, #d6eaff); color: #0958d9; border: 1px solid #91caff; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+.free-day-tip { margin-top: 10px; padding: 10px 12px; background: #e6f4ff; color: #0958d9; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.free-day-hint { margin-top: 10px; padding: 8px 12px; background: #f5f7fa; color: #666; border-radius: 8px; font-size: 12px; }
+.free-day-hint span { color: #1677ff; font-weight: 600; }
+.chip-none { background: #f0f2f5; color: #8a94a6; }
+.rank-item { display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid #f2f4f8; }
+.rank-item.warn { background: #fff2f0; margin: 0 -10px; padding: 11px 10px; border-radius: 6px; }
+.rank-item:last-child { border-bottom: none; }
+.rank-no { width: 26px; height: 26px; line-height: 26px; text-align: center; border-radius: 50%; background: #f0f2f5; color: #8a94a6; font-size: 13px; font-weight: 600; margin-right: 12px; }
+.rank-no.top { background: #1e6fff; color: #fff; }
+.rank-name { flex: 1; font-size: 15px; }
+.rank-count { font-size: 14px; font-weight: 600; color: #1e6fff; }
+
+/* ========== 我的 ========== */
+.user-card { display: flex; align-items: center; }
+.avatar { width: 52px; height: 52px; border-radius: 50%; background: #1e6fff; color: #fff; font-size: 24px; font-weight: 700; text-align: center; line-height: 52px; margin-right: 14px; }
+.user-name { font-size: 18px; font-weight: 700; }
+.user-role { margin-top: 3px; font-size: 13px; color: #1e6fff; }
+.info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f2f4f8; font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-label { color: #8a94a6; }
+.info-value { word-break: break-all; text-align: right; }
+.btn-stack .btn { margin-top: 10px; }
+
+/* ========== 管理 ========== */
+.toolbar { display: flex; gap: 10px; margin-bottom: 8px; }
+.toolbar .btn { flex: 1; font-size: 13px; padding: 9px 8px; }
+.member-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; }
+.member-ops { display: flex; gap: 8px; flex-shrink: 0; }
+.op-btn { font-size: 12px; color: #1e6fff; border: 1.5px solid #1e6fff; border-radius: 8px; padding: 3px 10px; cursor: pointer; background: #fff; }
+.op-btn.danger { color: #ff7a1a; border-color: #ff7a1a; }
+.op-btn.red { color: #e64340; border-color: #e64340; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.filter-row input, .filter-row select { padding: 8px 10px; font-size: 13px; }
+.filter-result { font-size: 12px; color: #8a94a6; margin-top: 8px; }
+.record-card { padding: 12px 14px; }
+.record-head { display: flex; align-items: center; justify-content: space-between; }
+.record-name { margin-top: 6px; font-size: 14px; }
+.record-reason { margin-top: 4px; font-size: 13px; color: #5a6675; line-height: 1.6; }
+.record-ops { display: flex; justify-content: flex-end; gap: 14px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f2f4f8; }
+.form-radio { display: flex; gap: 20px; align-items: center; }
+.form-radio label { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 14px; color: #1f2d3d; cursor: pointer; }
+
+/* ========== 底部 tabBar ========== */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; max-width: 520px; margin: 0 auto;
+  background: #fff; border-top: 1px solid #eef1f5; display: flex; z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar-item { flex: 1; text-align: center; padding: 9px 0 7px; font-size: 12px; color: #8a94a6; cursor: pointer; }
+.tabbar-item.active { color: #1e6fff; font-weight: 600; }
+.tabbar-icon { display: block; font-size: 18px; line-height: 1.3; }
+
+/* ========== Toast / Modal ========== */
+#toast {
+  position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%);
+  background: rgba(31,45,61,.92); color: #fff; padding: 12px 22px; border-radius: 10px;
+  font-size: 14px; z-index: 100; max-width: 80%; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#toast.show { opacity: 1; }
+#modalMask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+  display: none; align-items: center; justify-content: center;
+}
+#modalMask.show { display: flex; }
+#modalBox { background: #fff; border-radius: 14px; width: 86%; max-width: 420px; max-height: 82vh; overflow-y: auto; padding: 18px; }
+#modalTitle { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+#modalBody { font-size: 14px; line-height: 1.6; }
+#modalBtns { display: flex; gap: 10px; margin-top: 18px; }
+#modalBtns .btn { flex: 1; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'"></script>
+</head>
+<body>
+<div id="app">
+  <!-- 头部 -->
+  <div class="page" id="headerWrap" style="padding-bottom:0"></div>
+
+  <!-- 视图容器 -->
+  <div class="page" id="view"></div>
+
+  <!-- 底部导航 -->
+  <div class="tabbar">
+    <div class="tabbar-item" data-view="checkin" onclick="switchTab(this)">
+      <span class="tabbar-icon">🏃</span>打卡
+    </div>
+    <div class="tabbar-item" data-view="stats" onclick="switchTab(this)">
+      <span class="tabbar-icon">📊</span>统计
+    </div>
+    <div class="tabbar-item" data-view="me" onclick="switchTab(this)">
+      <span class="tabbar-icon">👤</span>我的
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="modalMask">
+  <div id="modalBox">
+    <div id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <div id="modalBtns"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+ * 投掷组训练打卡 · 网页版（Supabase 云数据库版）
+ * 数据实时同步，所有成员共享同一份数据。
+ * ============================================================ */
+
+/* Supabase 客户端 */
+let sb = null;
+try {
+  if (typeof supabase === 'undefined') throw new Error('supabase 库未加载');
+  sb = supabase.createClient(
+    'https://sdfvlxcetdihdsixovkf.supabase.co',
+    'sb_publishable_W2pYh6KFSMu1q-CQn-BGdQ_42TTCTQh'
+  );
+} catch (e) {
+  document.body.innerHTML = '<div style="padding:60px 20px;text-align:center;color:#666;font-size:15px;line-height:1.8"><div style="font-size:48px;margin-bottom:16px">⚠️</div>云数据库组件加载失败<br><br>请点击右上角「···」<br>选择「在浏览器打开」即可正常使用</div>';
+  throw e;
+}
+
+/* ---------- 工具 ---------- */
+const $ = (sel) => document.querySelector(sel);
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+/* 北京时间日期工具 */
+function beijingDate(d) {
+  return new Date((d || new Date()).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function isValidDate(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const p = s.split('-');
+  const dt = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  return dt.getUTCFullYear() === +p[0] && dt.getUTCMonth() === +p[1] - 1 && dt.getUTCDate() === +p[2];
+}
+function weekKey(dateStr) {
+  const p = dateStr.split('-');
+  const date = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((date - yearStart) / MS_PER_DAY / 7 + 1);
+  return date.getUTCFullYear() + '-W' + pad2(weekNo);
+}
+function weekRange(dateStr) {
+  const p = dateStr.split('-');
+  const date = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  const day = date.getUTCDay() || 7;
+  const monday = new Date(date.getTime() - (day - 1) * MS_PER_DAY);
+  const sunday = new Date(monday.getTime() + 6 * MS_PER_DAY);
+  return { monday: monday.toISOString().slice(0, 10), sunday: sunday.toISOString().slice(0, 10) };
+}
+function monthStart(dateStr) { return dateStr.slice(0, 7) + '-01'; }
+function formatTime(ts) {
+  if (!ts) return '';
+  const t = new Date(ts);
+  return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()) +
+    ' ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes());
+}
+
+/* ---------- 数据层（Supabase 云数据库） ---------- */
+const KEY_ME = 'tc_me';
+const KEY_DEVICE = 'tc_deviceId';
+
+let members = [];
+let checkins = [];
+let meId = localStorage.getItem(KEY_ME) || null;
+let deviceId = localStorage.getItem(KEY_DEVICE) || (localStorage.setItem(KEY_DEVICE, uid()), localStorage.getItem(KEY_DEVICE));
+let freeDaysCache = []; // 免打卡日列表（YYYY-MM-DD 数组）
+
+/* 从 Supabase 加载全部数据到内存 */
+async function loadFromDB() {
+  const { data: mList } = await sb.from('members').select('*').order('createdAt');
+  members = mList || [];
+  const { data: cList } = await sb.from('checkins').select('*').order('createdAt');
+  checkins = (cList || []).map((c) => ({ ...c, dbId: c.id }));
+  // 加载免打卡日
+  await loadFreeDays();
+  // 验证 meId 是否还有效
+  if (meId && !members.find((m) => m.id === meId)) {
+    meId = null;
+    localStorage.removeItem(KEY_ME);
+  }
+  // 检查并扣除未打卡生命值
+  await checkAndDeductHp();
+}
+
+/* 加载免打卡日：优先云端 config 表，云端不可用时回退本地缓存 */
+async function loadFreeDays() {
+  freeDaysCache = [];
+  // 本地兜底（防止云端表缺失时刷新即丢）
+  try {
+    const local = localStorage.getItem('tc_freeDays');
+    if (local) freeDaysCache = String(local).split(',').filter(Boolean);
+  } catch (e) {}
+  try {
+    const { data, error } = await sb.from('config').select('*').eq('key', 'freeDays').maybeSingle();
+    if (error) {
+      console.warn('config 表不可用（免打卡日仅保存在本机）：', error.message);
+      return;
+    }
+    if (data && data.value) {
+      freeDaysCache = String(data.value).split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn('config 表不可用（免打卡日仅保存在本机）：', e.message);
+  }
+}
+
+function getFreeDays() {
+  return freeDaysCache || [];
+}
+
+function isFreeDay(dateStr) {
+  return getFreeDays().includes(dateStr);
+}
+
+/* 保存免打卡日列表：写入云端 config 表 + 本地缓存；云端失败时仅本机有效并提示 */
+async function saveFreeDays(list) {
+  freeDaysCache = list.slice();
+  // 始终写本地缓存
+  try { localStorage.setItem('tc_freeDays', list.join(',')); } catch (e) {}
+  // 写云端
+  try {
+    const { data: exist, error: qErr } = await sb.from('config').select('*').eq('key', 'freeDays').maybeSingle();
+    if (qErr) throw qErr;
+    if (exist) {
+      const { error } = await sb.from('config').update({ value: list.join(',') }).eq('key', 'freeDays');
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('config').insert({ key: 'freeDays', value: list.join(',') });
+      if (error) throw error;
+    }
+    return { code: 0, msg: '已保存到云端' };
+  } catch (e) {
+    console.error('保存免打卡日到云端失败：', e);
+    return { code: 500, msg: '云端保存失败：数据库缺少 config 表。请在 Supabase SQL Editor 执行建表语句，详见说明。' };
+  }
+}
+
+/* 生命值实时计算，不需要扣血操作 */
+async function checkAndDeductHp() {
+  // 生命值 = 100 - 累计未打卡次数 × 10，实时计算，不需要存储
+  return;
+}
+
+/* 格式化日期为 YYYY-MM-DD */
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+/* 计算累计未打卡次数：从最早记录日期到昨天，总天数(排除免打卡日) - 有打卡记录的天数（不管来不来） */
+function getMissStreak(memberId) {
+  if (checkins.length === 0) return 0;
+  // 找最早的打卡日期
+  let earliest = checkins[0].date;
+  checkins.forEach((c) => { if (c.date < earliest) earliest = c.date; });
+  // 从最早日期到昨天，总共有多少天
+  const start = new Date(earliest + 'T00:00:00+08:00');
+  const yesterday = new Date(beijingDate() + 'T00:00:00+08:00');
+  yesterday.setDate(yesterday.getDate() - 1);
+  const totalDays = Math.floor((yesterday - start) / (1000 * 60 * 60 * 24)) + 1;
+  if (totalDays <= 0) return 0;
+  // 统计区间内免打卡日的数量（这些天不算未打卡）
+  const freeDays = getFreeDays();
+  let freeInRange = 0;
+  for (let d = new Date(start); d <= yesterday; d.setDate(d.getDate() + 1)) {
+    const ds = formatDate(d);
+    if (freeDays.includes(ds)) freeInRange++;
+  }
+  const effectiveDays = Math.max(0, totalDays - freeInRange);
+  // 该成员有打卡记录的天数（不管 present 还是 absent）
+  const hasRecordDays = new Set(
+    checkins.filter((c) => c.memberId === memberId).map((c) => c.date)
+  ).size;
+  // 未打卡天数 = 有效总天数 - 有记录的天数
+  return Math.max(0, effectiveDays - hasRecordDays);
+}
+
+/* 实时计算生命值：100 - 累计未打卡天数 × 10 */
+function getHp(memberId) {
+  const miss = getMissStreak(memberId);
+  return Math.max(0, 100 - miss * 10);
+}
+
+/* 同步新成员到 Supabase（返回生成的 id） */
+async function insertMember(m) {
+  const { data, error } = await sb.from('members').insert({
+    name: m.name, role: m.role, active: m.active,
+    boundBy: m.boundBy || ''
+  }).select();
+  if (error) { console.error('insertMember error', error); return null; }
+  return data[0];
+}
+
+/* 更新已有成员到 Supabase */
+async function syncMember(m) {
+  const { error } = await sb.from('members').update({
+    name: m.name, role: m.role, active: m.active,
+    boundBy: m.boundBy || '', updatedAt: new Date().toISOString()
+  }).eq('id', m.id);
+  if (error) console.error('syncMember error', error);
+}
+
+/* 同步单个打卡记录到 Supabase */
+async function syncCheckin(c) {
+  if (c.dbId) {
+    // 已有数据库记录，更新
+    const { error } = await sb.from('checkins').update({
+      status: c.status, reason: c.reason || '', modifyCount: c.modifyCount || 0,
+      updatedAt: new Date().toISOString()
+    }).eq('id', c.dbId);
+    if (error) console.error('syncCheckin error', error);
+  } else {
+    // 新记录，插入
+    const { data, error } = await sb.from('checkins').insert({
+      memberId: c.memberId, memberName: c.memberName,
+      date: c.date, weekKey: c.weekKey, status: c.status,
+      reason: c.reason || '', modifyCount: c.modifyCount || 0
+    }).select();
+    if (error) { console.error('syncCheckin error', error); return; }
+    if (data && data[0]) c.dbId = data[0].id;
+  }
+}
+
+/* 删除打卡记录 */
+async function deleteCheckinFromDB(c) {
+  if (!c.dbId) return;
+  const { error } = await sb.from('checkins').delete().eq('id', c.dbId);
+  if (error) console.error('deleteCheckin error', error);
+}
+
+/* 删除成员 */
+async function deleteMemberFromDB(id) {
+  const { error } = await sb.from('members').delete().eq('id', id);
+  if (error) console.error('deleteMember error', error);
+}
+
+const myMember = () => (meId ? members.find((m) => m.id === meId) || null : null);
+const isAdmin = () => {
+  if (sessionStorage.getItem('adminMode') === '1') return true;
+  const m = myMember();
+  return !!(m && m.role === 'admin' && m.active);
+};
+
+/* ---------- 业务逻辑层 ---------- */
+function apiLogin() {
+  const m = myMember();
+  return { code: 0, deviceId, isAdmin: isAdmin(), member: m ? { id: m.id, name: m.name, role: m.role, active: m.active } : null };
+}
+
+/* 多设备绑定辅助函数：boundBy 存逗号分隔的设备 ID 列表 */
+function getBoundDevices(m) {
+  return (m.boundBy || '').split(',').filter(Boolean);
+}
+function isBoundByThisDevice(m) {
+  return getBoundDevices(m).includes(deviceId);
+}
+function addDeviceToMember(m) {
+  const list = getBoundDevices(m);
+  if (!list.includes(deviceId)) list.push(deviceId);
+  m.boundBy = list.join(',');
+}
+function removeDeviceFromMember(m) {
+  const list = getBoundDevices(m).filter((d) => d !== deviceId);
+  m.boundBy = list.join(',');
+}
+
+function apiBindMember(memberId) {
+  if (!memberId) return { code: 400, msg: '缺少 memberId' };
+  // 1. 当前设备是否已绑定
+  const bound = members.find((m) => isBoundByThisDevice(m));
+  if (bound) return { code: 400, msg: '当前设备已绑定「' + bound.name + '」，请先在我的页退出绑定' };
+  // 2. 目标成员校验
+  const m = members.find((x) => x.id === memberId);
+  if (!m) return { code: 404, msg: '成员不存在' };
+  if (!m.active) return { code: 400, msg: '该成员已停用，无法绑定' };
+  // 3. 绑定（允许多设备绑定同一人）
+  addDeviceToMember(m);
+  m.updatedAt = Date.now();
+  meId = memberId;
+  localStorage.setItem(KEY_ME, meId);
+  syncMember(m);
+  return { code: 0, msg: '绑定成功' };
+}
+
+function apiUnbindSelf() {
+  const m = myMember();
+  if (!m) return { code: 400, msg: '当前未绑定' };
+  removeDeviceFromMember(m);
+  m.updatedAt = Date.now();
+  meId = null;
+  localStorage.removeItem(KEY_ME);
+  syncMember(m);
+  return { code: 0, msg: '已退出绑定' };
+}
+
+function apiSubmitCheckin({ date, status, reason, memberId }) {
+  const me = myMember();
+  if (!me) return { code: 401, msg: '请先在首页点击自己的姓名完成绑定' };
+  const isAdm = me.role === 'admin' && me.active;
+
+  // 目标成员：默认自己；管理员可代填
+  let target = me;
+  if (isAdm && memberId && memberId !== me.id) {
+    const t = members.find((x) => x.id === memberId);
+    if (!t) return { code: 404, msg: '目标成员不存在' };
+    target = t;
+  }
+
+  // 日期校验（默认今天，北京时间）
+  const today = beijingDate();
+  const targetDate = date || today;
+  if (!isValidDate(targetDate)) return { code: 400, msg: '日期格式不正确' };
+  if (targetDate > today) return { code: 400, msg: '不能给未来日期打卡' };
+
+  // 状态与原因
+  if (status !== 'present' && status !== 'absent') return { code: 400, msg: '状态不合法' };
+  let reasonStr = '';
+  if (status === 'absent') {
+    reasonStr = (reason || '').trim();
+    if (!reasonStr) return { code: 400, msg: '请假必须填写原因' };
+    if (reasonStr.length > 200) return { code: 400, msg: '请假原因不能超过200字' };
+  }
+
+  // 每人每天一条（memberId + date 唯一）
+  const exist = checkins.find((c) => c.memberId === target.id && c.date === targetDate);
+
+  if (exist) {
+    if (!isAdm && exist.memberId !== me.id) return { code: 403, msg: '只能修改自己的打卡记录' };
+    if (!isAdm) {
+      if (exist.date !== today) return { code: 403, msg: '只能修改当天的打卡记录' };
+      if ((exist.modifyCount || 0) >= 1) return { code: 403, msg: '当天记录只能修改一次' };
+    }
+    exist.status = status;
+    exist.reason = reasonStr;
+    exist.modifyCount = (exist.modifyCount || 0) + 1;
+    exist.updatedAt = Date.now();
+    syncCheckin(exist);
+    return { code: 0, msg: '修改成功', modified: true };
+  }
+
+  const doc = {
+    memberId: target.id,
+    memberName: target.name,
+    date: targetDate,
+    weekKey: weekKey(targetDate),
+    status,
+    reason: reasonStr,
+    modifyCount: 0
+  };
+  checkins.push(doc);
+  syncCheckin(doc);
+  return { code: 0, msg: status === 'present' ? '打卡成功' : '已提交请假', modified: false };
+}
+
+function apiGetMyStats(date) {
+  const me = myMember();
+  if (!me) return { code: 401, msg: '未绑定成员' };
+  const today = beijingDate();
+  const range = weekRange(today);
+  const mStart = monthStart(today);
+  const mine = checkins.filter((c) => c.memberId === me.id);
+  const stats = {
+    totalPresent: mine.filter((c) => c.status === 'present').length,
+    weekPresent: mine.filter((c) => c.status === 'present' && c.date >= range.monday && c.date <= range.sunday).length,
+    monthPresent: mine.filter((c) => c.status === 'present' && c.date >= mStart).length,
+    totalAbsent: mine.filter((c) => c.status === 'absent').length
+  };
+  const recent = mine.slice().sort((a, b) => (a.date === b.date ? b.createdAt - a.createdAt : a.date < b.date ? 1 : -1)).slice(0, 10);
+  const record = date ? mine.find((c) => c.date === date) || null : null;
+  return { code: 0, member: { id: me.id, name: me.name, role: me.role }, stats, recent, record };
+}
+
+function apiGetGroupStats(today) {
+  const d = today && isValidDate(today) ? today : beijingDate();
+  const isFree = isFreeDay(d);
+  const range = weekRange(d);
+  const todayRecords = checkins.filter((c) => c.date === d);
+  const map = {};
+  todayRecords.forEach((r) => { map[r.memberId] = r; });
+
+  const presentList = [], absentList = [], notCheckedInList = [];
+  const roster = members.map((m) => {
+    const rec = map[m.id];
+    // 免打卡日：所有成员状态显示为 free（免打卡）
+    const status = isFree ? 'free' : (rec ? rec.status : 'none');
+    if (isFree) {
+      // 免打卡日不产生未打卡名单
+    } else if (rec && rec.status === 'present') presentList.push({ id: m.id, name: m.name });
+    else if (rec && rec.status === 'absent') absentList.push({ id: m.id, name: m.name, reason: rec.reason || '' });
+    else if (m.active) notCheckedInList.push({ id: m.id, name: m.name });
+    return { id: m.id, name: m.name, role: m.role, active: m.active, boundBy: m.boundBy || '', status };
+  });
+
+  const weekRecords = checkins.filter((c) => c.status === 'present' && c.date >= range.monday && c.date <= range.sunday);
+  const rankMap = {};
+  weekRecords.forEach((r) => { rankMap[r.memberId] = (rankMap[r.memberId] || 0) + 1; });
+  const nameMap = {};
+  members.forEach((m) => { nameMap[m.id] = m.name; });
+  const weekRank = Object.keys(rankMap)
+    .map((memberId) => ({ memberId, memberName: nameMap[memberId] || memberId, count: rankMap[memberId] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20);
+
+  return { code: 0, today: d, isFree, members: roster, presentList, absentList, notCheckedInList, weekRank };
+}
+
+/* ---- 管理员 ---- */
+async function apiAdminMembers(action, payload) {
+  const me = myMember();
+  const isAdm = isAdmin();
+  if (!isAdm) return { code: 403, msg: '无管理员权限' };
+
+  if (action === 'list') return { code: 0, members: members.slice().sort((a, b) => a.createdAt - b.createdAt) };
+
+  if (action === 'add') {
+    const name = (payload.name || '').trim();
+    if (!name) return { code: 400, msg: '姓名不能为空' };
+    if (name.length > 20) return { code: 400, msg: '姓名不能超过20字' };
+    if (members.some((m) => m.name === name)) return { code: 400, msg: '已存在同名成员' };
+    const doc = {
+      name,
+      role: payload.role === 'admin' ? 'admin' : 'member',
+      active: true, boundBy: ''
+    };
+    const inserted = await insertMember(doc);
+    if (!inserted) return { code: 500, msg: '添加失败' };
+    members.push(inserted);
+    return { code: 0, msg: '添加成功' };
+  }
+
+  if (action === 'update') {
+    const m = members.find((x) => x.id === payload.id);
+    if (!m) return { code: 404, msg: '成员不存在' };
+    if (typeof payload.name === 'string') {
+      const name = payload.name.trim();
+      if (!name) return { code: 400, msg: '姓名不能为空' };
+      if (name.length > 20) return { code: 400, msg: '姓名不能超过20字' };
+      if (members.some((x) => x.name === name && x.id !== payload.id)) return { code: 400, msg: '已存在同名成员' };
+      m.name = name;
+    }
+    if (payload.role === 'admin' || payload.role === 'member') {
+      if (m.id === me.id && payload.role === 'member') return { code: 400, msg: '不能取消自己的管理员角色' };
+      m.role = payload.role;
+    }
+    if (typeof payload.active === 'boolean') {
+      if (m.id === me.id && !payload.active) return { code: 400, msg: '不能停用自己' };
+      m.active = payload.active;
+    }
+    m.updatedAt = Date.now();
+    syncMember(m);
+    return { code: 0, msg: '保存成功' };
+  }
+
+  if (action === 'toggle') {
+    const m = members.find((x) => x.id === payload.id);
+    if (!m) return { code: 404, msg: '成员不存在' };
+    if (m.id === me.id) return { code: 400, msg: '不能停用自己' };
+    m.active = !m.active;
+    m.updatedAt = Date.now();
+    syncMember(m);
+    return { code: 0, msg: m.active ? '已启用' : '已停用' };
+  }
+
+  if (action === 'unbind') {
+    const m = members.find((x) => x.id === payload.id);
+    if (!m) return { code: 404, msg: '成员不存在' };
+    if (m.id === me.id) return { code: 400, msg: '不能解绑自己，请先在我的页退出绑定' };
+    m.boundBy = '';
+    m.updatedAt = Date.now();
+    syncMember(m);
+    return { code: 0, msg: '已解绑' };
+  }
+
+  if (action === 'delete') {
+    const m = members.find((x) => x.id === payload.id);
+    if (!m) return { code: 404, msg: '成员不存在' };
+    if (m.id === me.id) return { code: 400, msg: '不能删除自己' };
+    // 删除该成员的所有打卡记录
+    const mine = checkins.filter((c) => c.memberId === m.id);
+    if (mine.length) {
+      await sb.from('checkins').delete().in('id', mine.map((c) => c.id));
+      checkins = checkins.filter((c) => c.memberId !== m.id);
+    }
+    // 删除成员
+    await sb.from('members').delete().eq('id', m.id);
+    members = members.filter((x) => x.id !== m.id);
+    return { code: 0, msg: '已删除' + m.name + ' 及其 ' + mine.length + ' 条打卡记录' };
+  }
+
+  return { code: 400, msg: '未知操作' };
+}
+
+function apiAdminRecords(action, payload) {
+  if (!isAdmin()) return { code: 403, msg: '无管理员权限' };
+
+  if (action === 'list') {
+    let list = checkins.slice();
+    if (payload.date) list = list.filter((c) => c.date === payload.date);
+    if (payload.memberId) list = list.filter((c) => c.memberId === payload.memberId);
+    if (payload.status) list = list.filter((c) => c.status === payload.status);
+    list.sort((a, b) => (a.date === b.date ? b.createdAt - a.createdAt : a.date < b.date ? 1 : -1));
+    return { code: 0, records: list, total: list.length };
+  }
+
+  if (action === 'modify') {
+    const r = checkins.find((x) => x.id === payload.id);
+    if (!r) return { code: 404, msg: '记录不存在' };
+    if (payload.status !== 'present' && payload.status !== 'absent') return { code: 400, msg: '状态不合法' };
+    let reasonStr = '';
+    if (payload.status === 'absent') {
+      reasonStr = (payload.reason || '').trim();
+      if (!reasonStr) return { code: 400, msg: '请假必须填写原因' };
+      if (reasonStr.length > 200) return { code: 400, msg: '请假原因不能超过200字' };
+    }
+    r.status = payload.status;
+    r.reason = reasonStr;
+    r.modifyCount = (r.modifyCount || 0) + 1;
+    r.updatedAt = Date.now();
+    syncCheckin(r);
+    return { code: 0, msg: '修改成功' };
+  }
+
+  if (action === 'delete') {
+    const idx = checkins.findIndex((x) => x.dbId === payload.id);
+    if (idx < 0) return { code: 404, msg: '记录不存在' };
+    const [removed] = checkins.splice(idx, 1);
+    deleteCheckinFromDB(removed);
+    return { code: 0, msg: '删除成功' };
+  }
+
+  return { code: 400, msg: '未知操作' };
+}
+
+function apiExportCsv(filters) {
+  if (!isAdmin()) return { code: 403, msg: '无管理员权限' };
+  const res = apiAdminRecords('list', filters);
+  const records = res.records;
+  const escCsv = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const header = ['日期', '成员姓名', '状态', '请假原因', '提交时间', '更新时间', '是否修改过'];
+  const lines = [header.map(escCsv).join(',')];
+  records.forEach((r) => {
+    lines.push([
+      r.date, r.memberName, r.status === 'present' ? '来训练' : '请假', r.reason || '',
+      formatTime(r.createdAt), formatTime(r.updatedAt), (r.modifyCount || 0) > 0 ? '是' : '否'
+    ].map(escCsv).join(','));
+  });
+  return { code: 0, csv: '\ufeff' + lines.join('\n'), count: records.length };
+}
+
+/* ---- 数据导出/导入（离线分发：发名单给队员 / 汇总队员记录） ---- */
+function apiExportData(namesOnly) {
+  if (!isAdmin()) return { code: 403, msg: '无管理员权限' };
+  const data = {
+    version: 1,
+    type: namesOnly ? 'roster' : 'all',
+    exportedAt: Date.now(),
+    members: members.map((m) => ({
+      name: m.name,
+      role: m.role,
+      active: m.active,
+      boundBy: m.boundBy || '' // 已绑定的姓名保留占用标记，防止新人重复绑定
+    })),
+    checkins: namesOnly
+      ? []
+      : checkins.map((c) => ({
+          memberName: c.memberName,
+          date: c.date,
+          status: c.status,
+          reason: c.reason || '',
+          modifyCount: c.modifyCount || 0,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt
+        }))
+  };
+  return { code: 0, data, count: namesOnly ? members.length : checkins.length };
+}
+
+// 导入：按姓名合并成员与打卡记录，重复数据自动跳过；普通成员也可用（接收名单）
+// 导入的数据会同步写入云端数据库，所有设备可见
+async function apiImportData(data) {
+  if (!data || data.version !== 1 || !Array.isArray(data.members)) {
+    return { code: 400, msg: '数据格式不正确，请选择由本应用导出的 JSON 文件' };
+  }
+  const nameMap = {};
+  members.forEach((m) => { nameMap[m.name] = m.id; });
+  const checkinKeys = new Set(checkins.map((c) => c.memberId + '_' + c.date));
+
+  let addedMembers = 0, skippedMembers = 0, addedCheckins = 0, skippedCheckins = 0;
+
+  for (const im of data.members) {
+    const name = (im.name || '').trim();
+    if (!name) continue;
+    if (nameMap[name]) { skippedMembers++; continue; } // 同名已存在，保留本地
+    const doc = {
+      id: uid(),
+      name,
+      role: im.role === 'admin' ? 'admin' : 'member',
+      active: im.active !== false,
+      boundBy: im.boundBy || '',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    // 写入云端，拿到真实 id
+    const inserted = await insertMember(doc);
+    if (!inserted) continue;
+    doc.id = inserted.id;
+    members.push(doc);
+    nameMap[name] = doc.id;
+    addedMembers++;
+  }
+
+  for (const ic of data.checkins || []) {
+    const name = (ic.memberName || '').trim();
+    const localId = nameMap[name];
+    if (!localId || !isValidDate(ic.date)) continue;
+    const key = localId + '_' + ic.date;
+    if (checkinKeys.has(key)) { skippedCheckins++; continue; }
+    const doc = {
+      id: uid(),
+      memberId: localId,
+      memberName: name,
+      boundBy: '',
+      date: ic.date,
+      weekKey: weekKey(ic.date),
+      status: ic.status === 'absent' ? 'absent' : 'present',
+      reason: String(ic.reason || '').slice(0, 200),
+      modifyCount: ic.modifyCount || 0,
+      createdAt: ic.createdAt || Date.now(),
+      updatedAt: ic.updatedAt || Date.now()
+    };
+    checkins.push(doc);
+    // 写入云端
+    await syncCheckin(doc);
+    checkinKeys.add(key);
+    addedCheckins++;
+  }
+
+  return {
+    code: 0,
+    msg: '导入完成：新增成员 ' + addedMembers + ' 个（跳过同名 ' + skippedMembers + '），新增记录 ' + addedCheckins + ' 条（跳过重复 ' + skippedCheckins + '）'
+  };
+}
+
+/* ---------- 全局 UI ---------- */
+const state = {
+  view: 'checkin',          // checkin | member | stats | me | admin
+  statsTab: 'personal',
+  adminTab: 'members',
+  memberId: null,           // 打卡页选中的成员
+  search: '',
+  date: beijingDate(),
+  editing: false,           // 打卡页修改模式
+  showReason: false,
+  reason: '',
+  adminFilter: { date: '', memberId: '', status: '' }
+};
+
+let toastTimer = null;
+function toast(msg, icon) {
+  const el = $('#toast');
+  el.textContent = (icon === 'success' ? '✓ ' : '') + msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function showModal({ title, body, confirmText = '确定', cancelText = '取消', showCancel = true, onConfirm, danger }) {
+  $('#modalTitle').textContent = title;
+  $('#modalBody').innerHTML = body;
+  const btns = $('#modalBtns');
+  btns.innerHTML = '';
+  if (showCancel) {
+    const c = document.createElement('button');
+    c.className = 'btn btn-ghost';
+    c.textContent = cancelText;
+    c.onclick = closeModal;
+    btns.appendChild(c);
+  }
+  const ok = document.createElement('button');
+  ok.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  ok.textContent = confirmText;
+  ok.onclick = () => { closeModal(); if (onConfirm) onConfirm(); };
+  btns.appendChild(ok);
+  $('#modalMask').classList.add('show');
+}
+function closeModal() { $('#modalMask').classList.remove('show'); }
+
+function switchTab(el) {
+  const v = el.dataset.view;
+  state.view = v;
+  if (v !== 'member') state.memberId = null;
+  if (v === 'stats') state.statsTab = 'personal';
+  render();
+}
+function goView(v) { state.view = v; render(); }
+
+/* ---------- 渲染 ---------- */
+const today = () => beijingDate();
+
+function render() {
+  renderHeader();
+  const view = $('#view');
+  if (state.view === 'checkin') view.innerHTML = renderCheckin();
+  else if (state.view === 'member') view.innerHTML = renderMember();
+  else if (state.view === 'stats') view.innerHTML = renderStats();
+  else if (state.view === 'me') view.innerHTML = renderMe();
+  else if (state.view === 'admin') view.innerHTML = renderAdmin();
+  else view.innerHTML = '';
+  renderTabbar();
+}
+
+function renderHeader() {
+  const m = myMember();
+  const range = weekRange(today());
+  $('#headerWrap').innerHTML =
+    '<div class="header">' +
+      '<div class="header-title">投掷组训练打卡</div>' +
+      '<div class="header-sub">' + today() + ' · 本周 ' + range.monday + ' ~ ' + range.sunday + '</div>' +
+      '<div class="header-identity ' + (m ? '' : 'unbound') + '">' +
+        (m ? '当前身份：' + esc(m.name) + (m.role === 'admin' ? '（管理员）' : '') : '未绑定成员') +
+      '</div>' +
+    '</div>';
+}
+
+function renderTabbar() {
+  document.querySelectorAll('.tabbar-item').forEach((el) => {
+    el.classList.toggle('active', el.dataset.view === state.view);
+  });
+}
+
+/* ---- 打卡视图（成员列表） ---- */
+function renderCheckin() {
+  const g = apiGetGroupStats();
+  const statusMap = {};
+  g.members.forEach((m) => { statusMap[m.id] = m; });
+
+  // 未初始化
+  if (members.length === 0) {
+    // 只有 URL 带 ?admin=init 才显示创建管理员表单
+    const isAdminInit = new URLSearchParams(location.search).get('admin') === 'init';
+    if (!isAdminInit) {
+      return '' +
+        '<div class="card">' +
+          '<div class="form-title">欢迎使用投掷组训练打卡</div>' +
+          '<div class="tip" style="margin-bottom:10px">系统正在初始化中，请等待管理员创建账号后再访问。</div>' +
+        '</div>';
+    }
+    return '' +
+      '<div class="card">' +
+        '<div class="form-title">管理员初始化</div>' +
+        '<div class="tip" style="margin-bottom:10px">你是第一个使用本系统的人，请创建管理员账号。</div>' +
+        '<label>管理员姓名</label><input id="initName" placeholder="如：队长" maxlength="20">' +
+        '<div class="btn-row" style="margin-top:14px">' +
+          '<button class="btn btn-primary" onclick="doInit()">创建管理员</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  const kw = state.search.trim();
+
+  let html = '' +
+    (isFreeDay(beijingDate())
+      ? '<div class="free-day-banner">🎉 今天是免打卡日（' + beijingDate() + '），所有人无需打卡，不扣生命值</div>'
+      : '') +
+    '<div class="search-bar">' +
+      '<input placeholder="搜索成员姓名" value="' + esc(state.search) + '" oninput="onSearch(this.value)">' +
+      (state.search ? '<span class="search-clear" onclick="clearSearch()">✕</span>' : '') +
+    '</div>' +
+    '<div id="memberList">' + renderMemberList(g.members) + '</div>';
+  if (isAdmin()) html += '<div style="text-align:center;margin-top:20px"><a href="javascript:void(0)" style="color:#1e6fff;font-size:15px;font-weight:600" onclick="goAdminFromHome()">管理入口 ›</a></div>';
+  return html;
+}
+
+// 渲染成员列表（仅刷新列表容器，保持搜索框焦点）
+function renderMemberList(all) {
+  const kw = state.search.trim();
+  const list = all.filter((m) => !kw || m.name.indexOf(kw) > -1);
+  let html = '';
+  list.forEach((m) => {
+    const stText = m.status === 'present' ? '已来训练' : m.status === 'absent' ? '已请假' : m.status === 'free' ? '免打卡日' : '未打卡';
+    const stCls = m.status === 'present' ? 'ok' : m.status === 'absent' ? 'warn' : m.status === 'free' ? 'free' : 'none';
+    const hp = getHp(m.id);
+    const hpCls = hp < 60 ? 'hp-low' : '';
+    let action = '';
+    if (isBoundByThisDevice(m)) action = '<span class="mc-action go">去打卡 ›</span>';
+    else action = '<span class="mc-action bind">点击绑定</span>';
+    html +=
+      '<div class="member-card ' + (m.active ? '' : 'off') + ' ' + hpCls + '" onclick="openMember(\'' + m.id + '\')">' +
+        '<div>' +
+          '<span class="mc-name">' + esc(m.name) + '</span>' +
+          (m.role === 'admin' ? '<span class="tag tag-admin">管理员</span>' : '') +
+          (!m.active ? '<span class="tag tag-off">已停用</span>' : '') +
+          '<div class="mc-status ' + stCls + '">' + stText + '</div>' +
+          '<div class="hp-bar"><span class="hp-label">❤ 生命值</span><div class="hp-progress"><div class="hp-fill" style="width:' + hp + '%"></div></div><span class="hp-num">' + hp + '</span></div>' +
+        '</div>' +
+        '<div>' + action + '</div>' +
+      '</div>';
+  });
+  if (!list.length) html += '<div class="empty">' + (members.length ? '没有匹配的成员' : '暂无成员') + '</div>';
+  return html;
+}
+
+function onSearch(v) {
+  state.search = v;
+  const el = $('#memberList');
+  if (el) el.innerHTML = renderMemberList(apiGetGroupStats().members);
+}
+function clearSearch() {
+  state.search = '';
+  const el = $('#memberList');
+  if (el) el.innerHTML = renderMemberList(apiGetGroupStats().members);
+}
+
+function openMember(id) {
+  const m = members.find((x) => x.id === id);
+  if (!m) return;
+  if (!m.active) { toast('该成员已停用'); return; }
+  if (isBoundByThisDevice(m)) {
+    state.memberId = id; state.view = 'member'; resetMemberForm(); render();
+    return;
+  }
+  const me = myMember();
+  if (me) {
+    showModal({
+      title: '提示',
+      body: '当前设备已绑定为「' + esc(me.name) + '」，一个设备只能绑定一个姓名。如需更换，请先在我的页退出绑定。',
+      confirmText: '知道了', showCancel: false
+    });
+    return;
+  }
+  showModal({
+    title: '绑定确认',
+    body: '确定将当前设备绑定为「' + esc(m.name) + '」吗？绑定后不可自行更换。',
+    confirmText: '确定绑定',
+    onConfirm: () => {
+      const r = apiBindMember(id);
+      if (r.code !== 0) { toast(r.msg); return; }
+      toast('绑定成功', 'success');
+      state.memberId = id; state.view = 'member'; resetMemberForm(); render();
+    }
+  });
+}
+
+function goAdminFromHome() { enterAdmin(); }
+
+/* ---- 打卡页 ---- */
+function resetMemberForm() {
+  state.date = today();
+  state.editing = false;
+  state.showReason = false;
+  state.reason = '';
+}
+
+function renderMember() {
+  const m = members.find((x) => x.id === state.memberId);
+  if (!m) return '<div class="empty">成员不存在</div>';
+  const my = myMember();
+  if (!(my && my.id === m.id)) {
+    // 非本人进入（如直接操作），只读该成员当日记录
+  }
+  const canOperate = !!(my && my.id === m.id) || (my && my.role === 'admin');
+
+  const res = apiGetMyStats(state.date);
+  const record = (res.code === 0 && res.record) || null;
+  const isToday = state.date === today();
+  const isAdm = !!myMember() && myMember().role === 'admin';
+  let canModify = false;
+  if (record && canOperate) {
+    canModify = isToday && (isAdm || (record.modifyCount || 0) < 1);
+  }
+
+  const freeDays = getFreeDays();
+  const isFree = isFreeDay(state.date);
+  let freeTip = '';
+  if (isFree) {
+    freeTip = '<div class="free-day-tip">🎉 这一天是免打卡日，不需要补签</div>';
+  } else if (freeDays.length) {
+    const upcoming = freeDays.slice().sort().join('、');
+    freeTip = '<div class="free-day-hint">已设置免打卡日：<span>' + esc(upcoming) + '</span></div>';
+  }
+
+  let html =
+    '<div class="back-bar" onclick="goView(\'checkin\')">‹ 返回成员列表</div>' +
+    '<div class="card">' +
+      '<label>选择日期（默认今天，可补打卡）</label>' +
+      '<div class="date-picker ' + (isToday ? '' : 'past') + '">' +
+        '<input type="date" value="' + state.date + '" min="2020-01-01" max="' + today() + '" onchange="onDatePick(this.value)">' +
+        '<span class="date-hint">' + (isToday ? '今天' : '补打卡') + '</span>' +
+      '</div>' +
+      freeTip +
+      '<div class="member-line">成员：' + esc(m.name) + (canOperate ? '' : '（仅查看）') + '</div>' +
+    '</div>';
+
+  // 已有记录
+  if (record && !state.editing) {
+    html +=
+      '<div class="card">' +
+        '<div class="record-status ' + (record.status === 'present' ? 'ok' : 'warn') + '">' +
+          (record.status === 'present' ? '已来训练' : '已请假') +
+        '</div>' +
+        (record.reason ? '<div class="record-reason">原因：' + esc(record.reason) + '</div>' : '') +
+        '<div class="record-time">提交时间：' + formatTime(record.createdAt) + (record.modifyCount > 0 ? ' · 已修改 ' + record.modifyCount + ' 次' : '') + '</div>' +
+        (canModify ? '<div class="record-note">当天记录允许修改一次</div>' : (!isToday ? '<div class="record-note">仅当天记录可修改</div>' : (record.modifyCount > 0 ? '<div class="record-note">该记录已修改过一次，不能再修改</div>' : ''))) +
+        (canModify ? '<button class="btn btn-ghost btn-block" onclick="startEdit()">修改记录</button>' : '') +
+      '</div>';
+  } else if (!record || state.editing) {
+    let btnHtml;
+    if (isFree) {
+      btnHtml = '<div class="tip">这一天是免打卡日，无需任何操作。</div>';
+    } else if (!canOperate) {
+      btnHtml = '<div class="tip">你只能给自己打卡，请点击自己的姓名进入打卡页。</div>';
+    } else {
+      const btn1 = isToday ? '今天来训练' : '标记为来训练';
+      const btn2 = state.showReason ? '确认请假' : (isToday ? '今天不来训练' : '标记为请假');
+      btnHtml = '<div class="btn-row">' +
+        '<button class="btn btn-primary" onclick="submitPresent()">' + btn1 + '</button>' +
+        '<button class="btn btn-warn" onclick="submitAbsent()">' + btn2 + '</button>' +
+      '</div>';
+    }
+    html +=
+      '<div class="card">' +
+        '<div class="form-title">' + (state.editing ? '修改打卡' : (record ? '该日期暂无记录' : (isToday ? '今日打卡' : '补打卡'))) + '</div>' +
+        btnHtml +
+        (state.showReason && !isFree ? renderReasonBox() : '') +
+        (state.editing ? '<button class="btn btn-ghost btn-block" onclick="cancelEdit()">取消修改</button>' : '') +
+      '</div>';
+  }
+
+  html += '<div class="tip" style="padding:0 4px">提示：每人每天只能有一条打卡记录；当天提交后允许修改一次。</div>';
+  return html;
+}
+
+function renderReasonBox() {
+  return '<div class="reason-wrap">' +
+    '<textarea maxlength="200" placeholder="请填写请假原因（必填，1-200字）" oninput="onReasonInput(this.value)">' + esc(state.reason) + '</textarea>' +
+    '<div class="reason-count">' + state.reason.length + '/200</div>' +
+  '</div>';
+}
+
+function onDatePick(v) {
+  if (!v) return;
+  if (v > today()) { toast('不能选择未来日期'); return; }
+  state.date = v; state.editing = false; state.showReason = false; state.reason = '';
+  render();
+}
+function onReasonInput(v) {
+  state.reason = v;
+  const c = document.querySelector('.reason-count');
+  if (c) c.textContent = v.length + '/200';
+}
+function startEdit() {
+  const r = apiGetMyStats(state.date).record;
+  state.editing = true;
+  state.showReason = !!(r && r.status === 'absent');
+  state.reason = (r && r.status === 'absent') ? (r.reason || '') : '';
+  render();
+}
+function cancelEdit() { state.editing = false; state.showReason = false; state.reason = ''; render(); }
+
+function submitPresent() { doSubmit('present', ''); }
+function submitAbsent() {
+  if (!state.showReason) { state.showReason = true; render(); return; }
+  doSubmit('absent', state.reason);
+}
+function doSubmit(status, reason) {
+  let reasonStr = '';
+  if (status === 'absent') {
+    reasonStr = (reason || '').trim();
+    if (!reasonStr) { toast('请填写请假原因'); return; }
+    if (reasonStr.length > 200) { toast('原因不能超过200字'); return; }
+  }
+  const r = apiSubmitCheckin({ date: state.date, status, reason: reasonStr });
+  if (r.code !== 0) { toast(r.msg); return; }
+  toast(r.msg, 'success');
+  state.editing = false; state.showReason = false; state.reason = '';
+  render();
+}
+
+/* ---- 统计视图 ---- */
+function renderStats() {
+  const tabs =
+    '<div class="tabs">' +
+      '<div class="tab ' + (state.statsTab === 'personal' ? 'active' : '') + '" onclick="setStatsTab(\'personal\')">个人统计</div>' +
+      '<div class="tab ' + (state.statsTab === 'group' ? 'active' : '') + '" onclick="setStatsTab(\'group\')">全组统计</div>' +
+    '</div>';
+
+  if (state.statsTab === 'personal') {
+    const me = myMember();
+    if (!me) return tabs + '<div class="card tip">你还没有绑定成员。回到「打卡」页，点击自己的姓名完成绑定后即可查看个人统计。</div>';
+    const res = apiGetMyStats();
+    const s = res.stats;
+    let html = tabs +
+      '<div class="stat-grid">' +
+        '<div class="stat-card"><div class="stat-num">' + s.totalPresent + '</div><div class="stat-label">总来训练</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + s.weekPresent + '</div><div class="stat-label">本周来训练</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + s.monthPresent + '</div><div class="stat-label">本月来训练</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + s.totalAbsent + '</div><div class="stat-label">总请假</div></div>' +
+      '</div>' +
+      '<div class="section-title">最近打卡记录</div>';
+    if (!res.recent.length) html += '<div class="empty">暂无打卡记录</div>';
+    res.recent.forEach((r) => {
+      html +=
+        '<div class="card record-item">' +
+          '<div class="record-row">' +
+            '<span class="record-date">' + r.date + '</span>' +
+            '<span class="badge ' + (r.status === 'present' ? 'ok' : 'warn') + '">' + (r.status === 'present' ? '来训练' : '请假') + '</span>' +
+          '</div>' +
+          (r.reason ? '<div class="record-reason">' + esc(r.reason) + '</div>' : '') +
+        '</div>';
+    });
+    return html;
+  }
+
+  // 全组统计
+  const g = apiGetGroupStats();
+  let html = tabs;
+  html += '<div class="section-title">今日出勤（' + g.presentList.length + '）</div>' +
+    '<div class="card chip-wrap">' +
+      (g.presentList.length ? g.presentList.map((x) => '<span class="chip chip-ok">' + esc(x.name) + '</span>').join('') : '<div class="empty">今日暂无出勤</div>') +
+    '</div>';
+  html += '<div class="section-title">今日请假（' + g.absentList.length + '）</div>';
+  if (!g.absentList.length) html += '<div class="empty">今日无人请假</div>';
+  g.absentList.forEach((x) => {
+    html += '<div class="card record-item">' +
+      '<div class="record-row"><span class="record-date">' + esc(x.name) + '</span><span class="badge warn">请假</span></div>' +
+      (x.reason ? '<div class="record-reason">' + esc(x.reason) + '</div>' : '') +
+    '</div>';
+  });
+  if (g.isFree) {
+    html += '<div class="card free-day-banner">🎉 今天是免打卡日（' + g.today + '），所有人无需打卡，不扣生命值，不计入未打卡</div>';
+  } else {
+    html += '<div class="section-title">今日未打卡（' + g.notCheckedInList.length + '）</div>' +
+      '<div class="card chip-wrap">' +
+        (g.notCheckedInList.length ? g.notCheckedInList.map((x) => '<span class="chip chip-none">' + esc(x.name) + '</span>').join('') : '<div class="empty">全部已打卡</div>') +
+      '</div>';
+  }
+
+  // 累计出勤排行榜（总训练次数）
+  const totalRank = members
+    .filter((m) => m.active)
+    .map((m) => {
+      const total = checkins.filter((c) => c.memberId === m.id && c.status === 'present').length;
+      return { name: m.name, count: total };
+    })
+    .filter((x) => x.count > 0)
+    .sort((a, b) => b.count - a.count);
+  html += '<div class="section-title">累计出勤排行榜 🏆</div>' +
+    '<div class="card">' +
+      (totalRank.length
+        ? totalRank.map((x, i) =>
+            '<div class="rank-item">' +
+              '<div class="rank-no ' + (i < 3 ? 'top' : '') + '">' + (i + 1) + '</div>' +
+              '<div class="rank-name">' + esc(x.name) + '</div>' +
+              '<div class="rank-count">' + x.count + ' 次</div>' +
+            '</div>').join('')
+        : '<div class="empty">暂无出勤记录</div>') +
+    '</div>';
+
+  html += '<div class="section-title">本周出勤排行榜</div>' +
+    '<div class="card">' +
+      (g.weekRank.length
+        ? g.weekRank.map((x, i) =>
+            '<div class="rank-item">' +
+              '<div class="rank-no ' + (i < 3 ? 'top' : '') + '">' + (i + 1) + '</div>' +
+              '<div class="rank-name">' + esc(x.memberName) + '</div>' +
+              '<div class="rank-count">' + x.count + ' 次</div>' +
+            '</div>').join('')
+        : '<div class="empty">本周暂无出勤记录</div>') +
+    '</div>';
+
+  // 累计未打卡排行榜
+  const missList = members
+    .filter((m) => m.active)
+    .map((m) => ({ name: m.name, streak: getMissStreak(m.id), hp: getHp(m.id) }))
+    .filter((x) => x.streak > 0)
+    .sort((a, b) => b.streak - a.streak);
+  html += '<div class="section-title">累计未打卡排行榜 ⚠️</div>' +
+    '<div class="card">' +
+      (missList.length
+        ? missList.map((x, i) =>
+            '<div class="rank-item' + (x.streak >= 5 ? ' warn' : '') + '">' +
+              '<div class="rank-no ' + (i < 3 ? 'top' : '') + '">' + (i + 1) + '</div>' +
+              '<div class="rank-name">' + esc(x.name) + (x.streak >= 5 ? ' <span style="color:#ff4d4f;font-size:12px">⚠️ 已达5次</span>' : '') + '</div>' +
+              '<div class="rank-count" style="color:#ff4d4f">' + x.streak + ' 次</div>' +
+            '</div>').join('')
+        : '<div class="empty">大家都很积极，无人未打卡</div>') +
+    '</div>';
+
+  return html;
+}
+function setStatsTab(t) { state.statsTab = t; render(); }
+
+/* ---- 我的视图 ---- */
+function renderMe() {
+  const me = myMember();
+  let html =
+    '<div class="card user-card">' +
+      '<div class="avatar">' + esc(me ? me.name.slice(0, 1) : '?') + '</div>' +
+      '<div>' +
+        '<div class="user-name">' + (me ? esc(me.name) : '未绑定成员') + '</div>' +
+        '<div class="user-role">' + (me ? (me.role === 'admin' ? '管理员' : '普通成员') : '普通成员') + '</div>' +
+      '</div>' +
+    '</div>';
+
+  html += '<div class="card">' +
+    '<div class="info-row"><span class="info-label">设备标识</span><span class="info-value">' + esc(deviceId.slice(0, 8)) + '…</span></div>' +
+    '<div class="info-row"><span class="info-label">绑定状态</span><span class="info-value">' + (me ? '已绑定' : '未绑定') + '</span></div>' +
+    (me ? '<div class="info-row"><span class="info-label">绑定姓名</span><span class="info-value">' + esc(me.name) + '</span></div>' : '') +
+  '</div>';
+
+  html += '<div class="card tip">' +
+    (me
+      ? '每个设备只能绑定一个姓名，绑定后不可自行更换。如需更换，请退出绑定后重新绑定。'
+      : '回到「打卡」页，点击自己的姓名即可完成绑定。绑定后即可打卡并查看个人统计。') +
+  '</div>';
+
+  html += '<div class="btn-stack">';
+  if (me) {
+    html += '<button class="btn btn-ghost" onclick="confirmUnbind()">退出绑定</button>';
+  }
+  if (isAdmin()) {
+    html += '<button class="btn btn-primary" onclick="enterAdmin()">管理入口</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function confirmUnbind() {
+  const me = myMember();
+  if (!me) return;
+  showModal({
+    title: '退出绑定',
+    body: '确定退出与「' + esc(me.name) + '」的绑定吗？退出后该姓名可被其他设备绑定。',
+    confirmText: '退出绑定',
+    danger: true,
+    onConfirm: () => {
+      const r = apiUnbindSelf();
+      toast(r.msg || '已退出绑定');
+      render();
+    }
+  });
+}
+
+/* 管理入口：都需要密码验证 */
+function enterAdmin() {
+  showModal({
+    title: '管理员验证',
+    body: '<label>请输入管理员密码</label><input type="password" id="adminPwd" placeholder="管理员密码" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-top:8px">',
+    confirmText: '进入',
+    onConfirm: () => {
+      const pwd = document.getElementById('adminPwd').value;
+      if (pwd === '052800') {
+        // 密码正确，进入管理模式（当前设备标记为管理员临时模式）
+        sessionStorage.setItem('adminMode', '1');
+        toast('验证成功', 'success');
+        state.view = 'admin'; state.adminTab = 'members'; render();
+      } else {
+        toast('密码错误');
+      }
+    }
+  });
+}
+
+/* ---- 初始化 ---- */
+async function doInit() {
+  const name = $('#initName').value.trim();
+  if (!name) { toast('请输入管理员姓名'); return; }
+  if (name.length > 20) { toast('姓名不能超过20字'); return; }
+  if (members.length > 0) { toast('系统已有成员，请让管理员在成员管理中添加'); return; }
+  const inserted = await insertMember({
+    name, role: 'admin', active: true, boundBy: deviceId
+  });
+  if (!inserted) { toast('初始化失败，请重试'); return; }
+  members.push(inserted);
+  meId = inserted.id;
+  localStorage.setItem(KEY_ME, meId);
+  toast('初始化成功', 'success');
+  render();
+}
+
+/* ---- 管理视图 ---- */
+function renderAdmin() {
+  const tabs =
+    '<div class="tabs">' +
+      '<div class="tab ' + (state.adminTab === 'members' ? 'active' : '') + '" onclick="setAdminTab(\'members\')">成员管理</div>' +
+      '<div class="tab ' + (state.adminTab === 'records' ? 'active' : '') + '" onclick="setAdminTab(\'records\')">记录管理</div>' +
+      '<div class="tab ' + (state.adminTab === 'settings' ? 'active' : '') + '" onclick="setAdminTab(\'settings\')">设置</div>' +
+    '</div>';
+  let html = '<div class="back-bar" onclick="goView(\'me\')">‹ 返回我的</div>' + tabs;
+  if (state.adminTab === 'members') html += renderAdminMembers();
+  else if (state.adminTab === 'records') html += renderAdminRecords();
+  else html += renderAdminSettings();
+  return html;
+}
+function setAdminTab(t) { state.adminTab = t; render(); }
+
+function renderAdminMembers() {
+  const me = myMember();
+  const list = members.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  let html =
+    '<div class="toolbar">' +
+      '<button class="btn btn-primary" onclick="openMemberForm()">＋ 添加成员</button>' +
+    '</div>' +
+    '<div class="section-title">成员管理（' + list.length + '）</div>';
+  if (!list.length) return html + '<div class="empty">暂无成员</div>';
+  list.forEach((m) => {
+    const isSelf = m.id === me.id;
+    const boundCount = (m.boundBy || '').split(',').filter(Boolean).length;
+    html +=
+      '<div class="card member-item">' +
+        '<div>' +
+          '<span class="mc-name">' + esc(m.name) + '</span>' +
+          (m.role === 'admin' ? '<span class="tag tag-admin">管理员</span>' : '') +
+          (!m.active ? '<span class="tag tag-off">已停用</span>' : '') +
+          (boundCount > 0 ? '<span class="tag" style="background:#e6f7ec;color:#1fa755">已绑定' + boundCount + '台</span>' : '<span class="tag" style="background:#fff1e6;color:#ff7a1a">未绑定</span>') +
+        '</div>' +
+        '<div class="member-ops">' +
+          '<button class="op-btn" onclick="openMemberForm(\'' + m.id + '\')">编辑</button>' +
+          (!isSelf ? '<button class="op-btn ' + (m.active ? 'danger' : '') + '" onclick="toggleMember(\'' + m.id + '\')">' + (m.active ? '停用' : '启用') + '</button>' : '') +
+          (boundCount > 0 && !isSelf ? '<button class="op-btn red" onclick="unbindMember(\'' + m.id + '\')">解绑</button>' : '') +
+          (!isSelf ? '<button class="op-btn red" onclick="deleteMember(\'' + m.id + '\')">删除</button>' : '') +
+        '</div>' +
+      '</div>';
+  });
+  return html;
+}
+
+function openMemberForm(id) {
+  const m = id ? members.find((x) => x.id === id) : null;
+  showModal({
+    title: m ? '编辑成员' : '添加成员',
+    body:
+      '<label>姓名</label><input id="mfName" maxlength="20" value="' + (m ? esc(m.name) : '') + '" placeholder="请输入姓名">' +
+      '<label>角色</label><div class="form-radio">' +
+        '<label><input type="radio" name="mfRole" value="member" ' + (!m || m.role !== 'admin' ? 'checked' : '') + '>普通成员</label>' +
+        '<label><input type="radio" name="mfRole" value="admin" ' + (m && m.role === 'admin' ? 'checked' : '') + '>管理员</label>' +
+      '</div>' +
+      (m ? '<label>启用状态</label><div class="form-radio">' +
+        '<label><input type="radio" name="mfActive" value="true" ' + (m.active ? 'checked' : '') + '>启用</label>' +
+        '<label><input type="radio" name="mfActive" value="false" ' + (!m.active ? 'checked' : '') + '>停用</label>' +
+      '</div>' : ''),
+    confirmText: '保存',
+    onConfirm: async () => {
+      const name = $('#mfName').value;
+      const role = document.querySelector('input[name="mfRole"]:checked').value;
+      const payload = m
+        ? { action: 'update', id: m.id, name, role, active: document.querySelector('input[name="mfActive"]:checked').value === 'true' }
+        : { action: 'add', name, role };
+      const r = await apiAdminMembers(payload.action, payload);
+      if (r.code !== 0) { toast(r.msg); return; }
+      toast(r.msg || '保存成功', 'success');
+      render();
+    }
+  });
+}
+
+function toggleMember(id) {
+  const m = members.find((x) => x.id === id);
+  if (!m) return;
+  showModal({
+    title: '确认操作',
+    body: m.active ? '确定停用「' + esc(m.name) + '」吗？停用后该成员无法打卡。' : '确定启用「' + esc(m.name) + '」吗？',
+    confirmText: '确定',
+    onConfirm: async () => {
+      const r = await apiAdminMembers('toggle', { id });
+      toast(r.msg || (r.code === 0 ? '操作成功' : '操作失败'));
+      render();
+    }
+  });
+}
+
+function unbindMember(id) {
+  const m = members.find((x) => x.id === id);
+  if (!m) return;
+  showModal({
+    title: '解绑确认',
+    body: '确定解绑「' + esc(m.name) + '」吗？解绑后该成员需要重新绑定才能打卡。',
+    confirmText: '解绑',
+    danger: true,
+    onConfirm: async () => {
+      const r = await apiAdminMembers('unbind', { id });
+      toast(r.msg || '已解绑');
+      render();
+    }
+  });
+}
+
+function deleteMember(id) {
+  const m = members.find((x) => x.id === id);
+  if (!m) return;
+  const cnt = checkins.filter((c) => c.memberId === id).length;
+  showModal({
+    title: '删除成员',
+    body: '确定删除「' + esc(m.name) + '」吗？<br><br>⚠️ 此操作不可恢复，将同时删除该成员的 <b>' + cnt + '</b> 条打卡记录。',
+    confirmText: '确认删除',
+    danger: true,
+    onConfirm: async () => {
+      const r = await apiAdminMembers('delete', { id });
+      if (r.code !== 0) { toast(r.msg); return; }
+      toast(r.msg, 'success');
+      render();
+    }
+  });
+}
+
+function renderAdminRecords() {
+  const f = state.adminFilter;
+  const membersOpts = '<option value="">全部成员</option>' +
+    members.filter((m) => m.active).map((m) => '<option value="' + m.id + '" ' + (f.memberId === m.id ? 'selected' : '') + '>' + esc(m.name) + '</option>').join('');
+  let html =
+    '<div class="card">' +
+      '<div class="filter-row">' +
+        '<input type="date" value="' + f.date + '" onchange="setAdminFilter(\'date\', this.value)" title="按日期筛选">' +
+      '</div>' +
+      '<div class="filter-row">' +
+        '<select onchange="setAdminFilter(\'memberId\', this.value)">' + membersOpts + '</select>' +
+        '<select onchange="setAdminFilter(\'status\', this.value)">' +
+          '<option value="">全部状态</option>' +
+          '<option value="present" ' + (f.status === 'present' ? 'selected' : '') + '>来训练</option>' +
+          '<option value="absent" ' + (f.status === 'absent' ? 'selected' : '') + '>请假</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="toolbar" style="margin-top:8px">' +
+        '<button class="btn btn-ghost" onclick="clearAdminFilter()">重置筛选</button>' +
+        '<button class="btn btn-primary" onclick="doExport()">导出 CSV</button>' +
+      '</div>' +
+    '</div>';
+
+  const res = apiAdminRecords('list', f);
+  html += '<div class="filter-result">共 ' + res.total + ' 条记录</div>';
+  if (!res.records.length) return html + '<div class="empty">没有符合条件的记录</div>';
+  res.records.forEach((r) => {
+    html +=
+      '<div class="card record-card">' +
+        '<div class="record-head">' +
+          '<span class="record-date">' + r.date + '</span>' +
+          '<span class="badge ' + (r.status === 'present' ? 'ok' : 'warn') + '">' + (r.status === 'present' ? '来训练' : '请假') + '</span>' +
+        '</div>' +
+        '<div class="record-name">' + esc(r.memberName) + '</div>' +
+        (r.reason ? '<div class="record-reason">原因：' + esc(r.reason) + '</div>' : '') +
+        '<div class="record-ops">' +
+          '<button class="op-btn" onclick="modifyRecord(\'' + r.id + '\')">修改</button>' +
+          '<button class="op-btn red" onclick="deleteRecord(\'' + r.id + '\')">删除</button>' +
+        '</div>' +
+      '</div>';
+  });
+  return html;
+}
+
+function setAdminFilter(k, v) { state.adminFilter[k] = v; render(); }
+function clearAdminFilter() { state.adminFilter = { date: '', memberId: '', status: '' }; render(); }
+
+function modifyRecord(id) {
+  const r = checkins.find((x) => x.id === id);
+  if (!r) return;
+  showModal({
+    title: '修改记录（' + r.date + '）',
+    body:
+      '<label>状态</label><div class="form-radio">' +
+        '<label><input type="radio" name="mrStatus" value="present" ' + (r.status === 'present' ? 'checked' : '') + '>来训练</label>' +
+        '<label><input type="radio" name="mrStatus" value="absent" ' + (r.status === 'absent' ? 'checked' : '') + '>请假</label>' +
+      '</div>' +
+      '<label>请假原因（请假时必填）</label>' +
+      '<textarea id="mrReason" maxlength="200" placeholder="1-200字">' + esc(r.reason || '') + '</textarea>',
+    confirmText: '保存',
+    onConfirm: () => {
+      const status = document.querySelector('input[name="mrStatus"]:checked').value;
+      const reason = $('#mrReason').value;
+      const res = apiAdminRecords('modify', { id, status, reason });
+      if (res.code !== 0) { toast(res.msg); return; }
+      toast('修改成功', 'success');
+      render();
+    }
+  });
+}
+
+function deleteRecord(id) {
+  const r = checkins.find((x) => x.id === id);
+  if (!r) return;
+  showModal({
+    title: '删除确认',
+    body: '确定删除 ' + esc(r.memberName) + ' ' + r.date + ' 的打卡记录吗？删除后不可恢复。',
+    confirmText: '删除',
+    danger: true,
+    onConfirm: () => {
+      const res = apiAdminRecords('delete', { id });
+      toast(res.code === 0 ? '已删除' : res.msg, res.code === 0 ? 'success' : undefined);
+      render();
+    }
+  });
+}
+
+function doExport() {
+  const res = apiExportCsv(state.adminFilter);
+  if (res.code !== 0) { toast(res.msg); return; }
+  const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '打卡记录_' + beijingDate() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+  toast('已导出 ' + res.count + ' 条记录', 'success');
+}
+
+function renderAdminSettings() {
+  const freeDays = getFreeDays();
+  const freeDaysHtml = freeDays.length
+    ? freeDays.slice().sort().map((d) =>
+        '<span class="free-day-chip">' + d + ' <a href="javascript:void(0)" onclick="removeFreeDay(\'' + d + '\')">✕</a></span>').join('')
+    : '<div class="empty">暂无免打卡日</div>';
+  return '<div class="card">' +
+    '<div class="form-title">数据备份</div>' +
+    '<div class="toolbar">' +
+      '<button class="btn btn-ghost" onclick="exportBackup()">导出全部数据备份</button>' +
+      '<button class="btn btn-primary" onclick="exportMemberStats()">📊 导出成员统计汇总</button>' +
+    '</div>' +
+    '<div class="tip" style="margin-top:10px">' +
+      '数据实时同步在云端，所有成员打开链接即可看到最新状态。导出备份仅用于数据备份。导出汇总表可直接用 Excel 打开。' +
+    '</div>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="form-title">免打卡日设置</div>' +
+    '<div class="tip" style="margin:4px 0 10px">' +
+      '免打卡日当天所有成员不需要打卡，不扣生命值，也不算未打卡。支持单个日期或连续多天。' +
+    '</div>' +
+    '<div class="toolbar">' +
+      '<input type="date" id="freeDayInput" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+      '<button class="btn btn-primary" onclick="addFreeDay()">添加</button>' +
+    '</div>' +
+    '<div class="toolbar" style="margin-top:8px">' +
+      '<input type="text" id="freeDayRangeInput" placeholder="批量添加，如 2026-10-01,2026-10-02,2026-10-03" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px">' +
+      '<button class="btn btn-ghost" onclick="addFreeDayRange()">批量添加</button>' +
+    '</div>' +
+    '<div class="free-day-wrap" style="margin-top:10px">' + freeDaysHtml + '</div>' +
+    (isFreeDay(beijingDate())
+      ? '<div class="tip" style="margin-top:8px;color:#1fa755;font-weight:600">✅ 今天是免打卡日，所有人无需打卡</div>'
+      : '') +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="form-title">数据重置</div>' +
+    '<div class="toolbar">' +
+      '<button class="btn btn-danger" onclick="resetAllData()">⚠️ 清空所有打卡记录（次数清零）</button>' +
+    '</div>' +
+    '<div class="tip" style="margin-top:10px;color:#ff4d4f">' +
+      '此操作会删除所有打卡记录，训练次数重新从0开始计算。生命值也会重置为100。' +
+    '</div>' +
+  '</div>' +
+  '<div class="card tip">' +
+    '本系统使用云端数据库，所有成员共享同一份数据，打卡实时同步。' +
+  '</div>';
+}
+
+/* 添加单个免打卡日 */
+async function addFreeDay() {
+  const input = document.getElementById('freeDayInput');
+  const d = input.value;
+  if (!d) { toast('请选择日期'); return; }
+  if (isFreeDay(d)) { toast('该日期已是免打卡日'); return; }
+  const list = getFreeDays();
+  list.push(d);
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已添加免打卡日 ' + d, 'success');
+  render();
+}
+
+/* 批量添加免打卡日 */
+async function addFreeDayRange() {
+  const input = document.getElementById('freeDayRangeInput');
+  const raw = input.value.trim();
+  if (!raw) { toast('请输入日期列表'); return; }
+  const parts = raw.split(/[,，\s]+/).map((s) => s.trim()).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s));
+  if (!parts.length) { toast('格式不正确，请用 2026-10-01,2026-10-02 格式'); return; }
+  const list = getFreeDays();
+  let added = 0;
+  parts.forEach((d) => { if (!list.includes(d)) { list.push(d); added++; } });
+  if (!added) { toast('这些日期都已是免打卡日'); return; }
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已添加 ' + added + ' 天免打卡日', 'success');
+  render();
+}
+
+/* 删除免打卡日 */
+async function removeFreeDay(d) {
+  const list = getFreeDays().filter((x) => x !== d);
+  const r = await saveFreeDays(list);
+  if (r.code !== 0) { showModal({ title: '保存失败', body: r.msg + '<br><br>请复制以下 SQL 到 Supabase → SQL Editor 执行后重试：<pre style="background:#f5f5f5;padding:8px;border-radius:6px;font-size:12px;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS public.config (key text PRIMARY KEY, value text); ALTER TABLE public.config ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow all" ON public.config FOR ALL USING (true) WITH CHECK (true);</pre>', confirmText: '知道了', showCancel: false }); render(); return; }
+  toast('已移除免打卡日 ' + d);
+  render();
+}
+
+/* 导出成员统计汇总 CSV */
+function exportMemberStats() {
+  let csv = '﻿姓名,角色,状态,总出勤次数,总请假次数,累计未打卡天数,生命值\n';
+  members.forEach((m) => {
+    const totalPresent = checkins.filter((c) => c.memberId === m.id && c.status === 'present').length;
+    const totalAbsent = checkins.filter((c) => c.memberId === m.id && c.status === 'absent').length;
+    const missDays = getMissStreak(m.id);
+    const hp = getHp(m.id);
+    const roleText = m.role === 'admin' ? '管理员' : '成员';
+    const activeText = m.active ? '启用' : '停用';
+    csv += m.name + ',' + roleText + ',' + activeText + ',' + totalPresent + ',' + totalAbsent + ',' + missDays + ',' + hp + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '成员训练统计_' + beijingDate() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+  toast('已导出 ' + members.length + ' 名成员统计', 'success');
+}
+
+function resetAllData() {
+  showModal({
+    title: '确认重置',
+    body: '确定要清空所有打卡记录吗？此操作不可恢复，所有成员的训练次数和生命值都将重新从100开始计算。',
+    confirmText: '确定重置',
+    danger: true,
+    onConfirm: async () => {
+      // 清空所有 checkins
+      for (const c of checkins) {
+        if (c.dbId) {
+          const { error } = await sb.from('checkins').delete().eq('id', c.dbId);
+          if (error) console.error('删除记录失败', error);
+        }
+      }
+      checkins.length = 0;
+      // 清空后生命值自动恢复100（实时计算）
+      toast('已重置', 'success');
+      render();
+    }
+  });
+}
+
+/* ---- 数据文件下载 / 导入 ---- */
+function downloadJson(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+}
+
+function exportRoster() {
+  const r = apiExportData(true);
+  if (r.code !== 0) { toast(r.msg); return; }
+  downloadJson('成员名单_' + beijingDate() + '.json', r.data);
+  toast('已导出 ' + r.count + ' 名成员', 'success');
+}
+
+function exportBackup() {
+  const r = apiExportData(false);
+  if (r.code !== 0) { toast(r.msg); return; }
+  downloadJson('打卡数据_' + beijingDate() + '.json', r.data);
+  toast('已导出 ' + r.count + ' 条记录', 'success');
+}
+
+let importInput = null;
+function pickImportFile() {
+  if (!importInput) {
+    importInput = document.createElement('input');
+    importInput.type = 'file';
+    importInput.accept = '.json,application/json';
+    importInput.style.display = 'none';
+    importInput.onchange = () => {
+      const file = importInput.files && importInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const data = JSON.parse(reader.result);
+          const r = await apiImportData(data);
+          toast(r.msg, r.code === 0 ? 'success' : undefined);
+          if (r.code === 0) render();
+        } catch (e) {
+          toast('文件解析失败，请确认是本应用导出的 JSON');
+        }
+      };
+      reader.readAsText(file);
+      importInput.value = '';
+    };
+    document.body.appendChild(importInput);
+  }
+  importInput.click();
+}
+
+/* ---------- 启动 ---------- */
+(async function init() {
+  $('#view').innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    await loadFromDB();
+  } catch (e) {
+    $('#view').innerHTML = '<div class="empty">数据加载失败，请检查网络后刷新</div>';
+    console.error('loadFromDB error', e);
+    return;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
