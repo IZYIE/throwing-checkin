@@ -197,7 +197,7 @@ label { display: block; font-size: 13px; color: #8a94a6; margin: 12px 0 6px; }
 #modalBtns { display: flex; gap: 10px; margin-top: 18px; }
 #modalBtns .btn { flex: 1; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'"></script>
 </head>
 <body>
 <div id="app">
@@ -311,18 +311,39 @@ let freeDaysCache = []; // 免打卡日列表（YYYY-MM-DD 数组）
 
 /* 从 Supabase 加载全部数据到内存 */
 async function loadFromDB() {
-  const { data: mList } = await sb.from('members').select('*').order('createdAt');
-  members = mList || [];
-  const { data: cList } = await sb.from('checkins').select('*').order('createdAt');
-  checkins = (cList || []).map((c) => ({ ...c, dbId: c.id }));
-  // 加载免打卡日
-  await loadFreeDays();
-  // 验证 meId 是否还有效
+  // 先读本地缓存，秒开界面
+  try {
+    const cacheM = localStorage.getItem('tc_members');
+    const cacheC = localStorage.getItem('tc_checkins');
+    if (cacheM) members = JSON.parse(cacheM);
+    if (cacheC) checkins = JSON.parse(cacheC);
+  } catch (e) {}
+
+  // 并行拉取：成员 + 打卡记录 + 免打卡日
+  const [mRes, cRes, fRes] = await Promise.all([
+    sb.from('members').select('*').order('createdAt'),
+    sb.from('checkins').select('*').order('createdAt'),
+    sb.from('config').select('*').eq('key', 'freeDays').maybeSingle()
+  ]);
+
+  if (mRes.data) {
+    members = mRes.data;
+    try { localStorage.setItem('tc_members', JSON.stringify(members)); } catch (e) {}
+  }
+  if (cRes.data) {
+    checkins = cRes.data.map((c) => ({ ...c, dbId: c.id }));
+    try { localStorage.setItem('tc_checkins', JSON.stringify(checkins)); } catch (e) {}
+  }
+  if (fRes.data && fRes.data.value) {
+    freeDaysCache = String(fRes.data.value).split(',').map((s) => s.trim()).filter(Boolean);
+  } else {
+    try { freeDaysCache = (localStorage.getItem('tc_freeDays') || '').split(',').filter(Boolean); } catch (e) { freeDaysCache = []; }
+  }
+
   if (meId && !members.find((m) => m.id === meId)) {
     meId = null;
     localStorage.removeItem(KEY_ME);
   }
-  // 检查并扣除未打卡生命值
   await checkAndDeductHp();
 }
 
